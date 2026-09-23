@@ -106,3 +106,4 @@ body.tb-autohide #workarea { inset: 0; }
 /* Full-tile app artwork (first-party apps) */
 .app-icon.art { background: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); overflow: hidden; }
 .app-icon.art svg { width: 100%; height: 100%; filter: none; }
+.app-icon.art img { width: 100%; height: 100%; object-fit: cover; display: block; }

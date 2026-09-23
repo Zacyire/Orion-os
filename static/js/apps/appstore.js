@@ -90,26 +90,31 @@ export default {
 
     function addWebApp() {
       const name = h('input.field', { placeholder: 'e.g. Wikipedia', maxlength: 40, required: true });
-      const url = h('input.field', { type: 'url', placeholder: 'https://', required: true });
-      const color = h('input', { type: 'color', value: '#4c8dff', style: { width: '44px', height: '34px', border: 0, background: 'none' } });
-      const proxy = h('input', { type: 'checkbox' });
+      const url = h('input.field', { type: 'url', placeholder: 'https://example.com/', required: true });
+      const runtime = h('select.field',
+        h('option', { value: 'direct' }, 'Direct — show the site in the app window'),
+        h('option', { value: 'embed' }, 'Embed — target is a provider embed URL'),
+        h('option', { value: 'external' }, 'External — open the site in Orion'),
+      );
+      const icon = h('input.field', { type: 'url', placeholder: 'https://…/icon.png (optional)' });
       const dialog = h('div.store-dialog-backdrop',
         h('form.store-dialog.glass',
-          h('h2', 'Add web app'),
+          h('h2', 'New web app'),
           h('label', h('span', 'Name'), name),
-          h('label', h('span', 'URL'), url),
-          h('label.row', h('span', 'Tile colour'), color),
-          h('label.row', h('span.toggle', proxy, h('i')), h('span', 'Isolated mode — render through the LTF OS server in a sandbox without cookies')),
+          h('label', h('span', 'Target URL'), url),
+          h('label', h('span', 'Runtime'), runtime),
+          h('label', h('span', 'Icon URL (optional)'), icon),
+          h('p.muted', { style: { margin: '0', fontSize: 'var(--fs-xs)' } }, 'Saved in this browser. Sites that block embedding won’t display in Direct mode — use External to open them in Orion.'),
           h('div.store-dialog-actions',
             h('button.btn', { type: 'button', onclick: () => dialog.remove() }, 'Cancel'),
-            h('button.btn.primary', { type: 'submit' }, 'Add app')),
+            h('button.btn.primary', { type: 'submit' }, 'Create app')),
         ));
-      dialog.querySelector('form').addEventListener('submit', async (e) => {
+      dialog.querySelector('form').addEventListener('submit', (e) => {
         e.preventDefault();
         try {
-          const app = await registry.addCustom({ name: name.value.trim(), url: url.value.trim(), color: color.value, proxy: proxy.checked });
+          const app = registry.createLocal({ name: name.value, target: url.value, runtime: runtime.value, icon: icon.value });
           dialog.remove();
-          ctx.notify(`${app.name} added`, 'Pinned to Start. Drag it to the taskbar or desktop.', { type: 'success' });
+          ctx.notify(`${app.name} added`, 'Find it in Start; drag it to the taskbar or desktop.', { type: 'success' });
           cat = 'Web';
           draw();
         } catch (err) {

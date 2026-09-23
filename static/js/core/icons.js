@@ -191,6 +191,17 @@ export function appIcon(app, size = '') {
     el.innerHTML = art.replaceAll('__ID__', `-${++artSeq}`);
     return el;
   }
+  // User-supplied icon URL (web-app installer). Falls back to a glyph on error.
+  if (app.iconUrl) {
+    el.classList.add('art');
+    const img = document.createElement('img');
+    img.src = app.iconUrl;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.onerror = () => { el.classList.remove('art'); el.innerHTML = icons.globe; };
+    el.appendChild(img);
+    return el;
+  }
   const [a, b] = app.color ? [app.color, shade(app.color)] : tileColors[app.id] || ['#3b4252', '#232834'];
   el.style.setProperty('--tile-a', a);
   el.style.setProperty('--tile-b', b);

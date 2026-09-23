@@ -43,7 +43,9 @@ export const startMenu = {
       const apps = registry.installed().sort((a, b) => (showAll ? a.name.localeCompare(b.name) : 0));
       body.replaceChildren(
         h('div.sm-heading', showAll ? 'All apps' : 'Pinned',
-          h('button.btn.ghost', { onclick: () => { showAll = !showAll; drawHome(); } }, showAll ? '‹ Back' : 'All apps ›')),
+          h('div', { style: { display: 'flex', gap: '4px' } },
+            h('button.btn.ghost', { title: 'Create a web app', onclick: () => { flyouts.close(); wm.open('appstore', { addWebApp: true }); } }, '+ New Web App…'),
+            h('button.btn.ghost', { onclick: () => { showAll = !showAll; drawHome(); } }, showAll ? '‹ Back' : 'All apps ›'))),
         showAll
           ? h('div', apps.map((a) => listItem(a)))
           : h('div.sm-grid', apps.map((a) => gridItem(a))),
