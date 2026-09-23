@@ -12,7 +12,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::{broadcast, Mutex, RwLock};
 
-use crate::{catalog, config::Config};
+use crate::{
+    catalog,
+    config::Config,
+    web::{inspect::InspectCache, limit::RateLimiter},
+};
 
 /// A web app added from the App Store ("Add web app"). Rendered by the
 /// generic `embed` module as an iframe.
@@ -36,6 +40,8 @@ pub struct AppState {
     pub events: broadcast::Sender<String>,
     pub started: Instant,
     pub http: reqwest::Client,
+    pub limiter: RateLimiter,
+    pub inspect_cache: InspectCache,
     /// Serialises disk writes so concurrent saves never interleave.
     write_lock: Mutex<()>,
 }
@@ -48,14 +54,15 @@ impl AppState {
         let files_dir = data_dir.join("files");
         tokio::fs::create_dir_all(&files_dir).await?;
 
-        let prefs = match read_json(&data_dir.join("prefs.json")).await {
+        let mut prefs = match read_json(&data_dir.join("prefs.json")).await {
             Some(v) if v.is_object() => v,
             _ => default_prefs(),
         };
-        let installed = match read_json(&data_dir.join("installed.json")).await {
+        let mut installed: BTreeSet<String> = match read_json(&data_dir.join("installed.json")).await {
             Some(Value::Array(a)) => a.into_iter().filter_map(|v| v.as_str().map(String::from)).collect(),
             _ => catalog::default_installed(),
         };
+        migrate_ids(&mut prefs, &mut installed);
         let custom_apps = read_json(&data_dir.join("custom_apps.json"))
             .await
             .and_then(|v| serde_json::from_value(v).ok())
@@ -76,7 +83,10 @@ impl AppState {
             .map_err(std::io::Error::other)?;
 
         let (events, _) = broadcast::channel(64);
+        let limiter = RateLimiter::new(config.rate_limit_per_min);
         Ok(Self {
+            limiter,
+            inspect_cache: InspectCache::default(),
             files_dir,
             prefs: RwLock::new(prefs),
             installed: RwLock::new(installed),
@@ -123,6 +133,27 @@ pub async fn read_json(path: &Path) -> Option<Value> {
     serde_json::from_slice(&bytes).ok()
 }
 
+/// App ids that were renamed; old ids in saved prefs/installs are rewritten on load.
+const RENAMED_APPS: &[(&str, &str)] = &[("notnetflix", "netflix")];
+
+fn migrate_ids(prefs: &mut Value, installed: &mut BTreeSet<String>) {
+    for (old, new) in RENAMED_APPS {
+        if installed.remove(*old) {
+            installed.insert((*new).to_string());
+        }
+        if let Some(pinned) = prefs.pointer_mut("/taskbar/pinned").and_then(Value::as_array_mut) {
+            for id in pinned.iter_mut().filter(|v| v == old) {
+                *id = json!(new);
+            }
+        }
+        if let Some(shortcuts) = prefs.pointer_mut("/desktop/shortcuts").and_then(Value::as_array_mut) {
+            for s in shortcuts.iter_mut().filter(|s| s["app"] == *old) {
+                s["app"] = json!(new);
+            }
+        }
+    }
+}
+
 pub fn default_prefs() -> Value {
     json!({
         "user": { "name": "User" },
@@ -136,14 +167,14 @@ pub fn default_prefs() -> Value {
         },
         "taskbar": {
             "position": "bottom",
-            "pinned": ["orion", "notnetflix", "spiceify", "youtube", "vapor", "geforcenow", "appstore"],
+            "pinned": ["orion", "netflix", "spiceify", "youtube", "vapor", "geforcenow", "appstore"],
             "autoHide": false,
             "centered": true
         },
         "desktop": {
             "shortcuts": [
                 { "app": "orion",      "col": 0, "row": 0 },
-                { "app": "notnetflix", "col": 0, "row": 1 },
+                { "app": "netflix", "col": 0, "row": 1 },
                 { "app": "spiceify",   "col": 0, "row": 2 },
                 { "app": "youtube",    "col": 0, "row": 3 },
                 { "app": "vapor",      "col": 0, "row": 4 },
@@ -164,6 +195,21 @@ This document lives on the server in `data/files/` and is editable in Notepad.
 ## Getting started
 - Right-click the taskbar (or open Settings → Taskbar) to dock it to any screen edge.
 - Drag an app from the taskbar onto the desktop to create a shortcut; drag a shortcut onto the taskbar to pin it.
-- Content for NotNetflix, Spiceify, Vapor, YouTube and wallpapers is defined in the `content/` directory.
-- Add any website as an app from App Store → Add web app.
+- Content for Spiceify, Vapor, YouTube and wallpapers is defined in the `content/` directory.
+- Any website can become an app: App Store → Add web app, or one entry in `static/apps.json`.
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn migrates_renamed_app_ids() {
+        let mut prefs = json!({ "taskbar": { "pinned": ["orion", "notnetflix"] }, "desktop": { "shortcuts": [{ "app": "notnetflix", "col": 0, "row": 1 }] } });
+        let mut installed: BTreeSet<String> = ["notnetflix".to_string()].into();
+        migrate_ids(&mut prefs, &mut installed);
+        assert_eq!(prefs["taskbar"]["pinned"], json!(["orion", "netflix"]));
+        assert_eq!(prefs["desktop"]["shortcuts"][0]["app"], "netflix");
+        assert!(installed.contains("netflix") && !installed.contains("notnetflix"));
+    }
+}

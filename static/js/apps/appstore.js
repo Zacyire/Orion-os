@@ -99,7 +99,7 @@ export default {
           h('label', h('span', 'Name'), name),
           h('label', h('span', 'URL'), url),
           h('label.row', h('span', 'Tile colour'), color),
-          h('label.row', h('span.toggle', proxy, h('i')), h('span', 'Load through the server proxy (for sites that block embedding)')),
+          h('label.row', h('span.toggle', proxy, h('i')), h('span', 'Isolated mode — render through the LTF OS server in a sandbox without cookies')),
           h('div.store-dialog-actions',
             h('button.btn', { type: 'button', onclick: () => dialog.remove() }, 'Cancel'),
             h('button.btn.primary', { type: 'submit' }, 'Add app')),
@@ -157,7 +157,7 @@ export default {
           notInstalled.length ? h('div.store-grid', notInstalled.map(card)) : null,
           h('div.section-title', 'Apps'), h('div.store-grid', all.filter((x) => !x.custom).map(card)),
           h('div.section-title', 'Your web apps'),
-          web.length ? h('div.store-grid', web.map(card)) : h('div.card.muted', 'Turn any website into a desktop app with “Add web app”. It opens in its own window and can be pinned to the taskbar.'),
+          web.length ? h('div.store-grid', web.map(card)) : h('div.card.muted', 'Turn any website into a desktop app with “Add web app”. It opens in its own window without browser controls and can be pinned to the taskbar. Sites that don’t allow embedding show an explanation instead.'),
         );
       } else if (cat === 'library') {
         const mine = all.filter((x) => x.installed);

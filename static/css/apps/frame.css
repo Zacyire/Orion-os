@@ -1,18 +1,26 @@
-/* AppFrame — isolated iframe container (js/core/frame.js) */
+/* AppFrame — web container (js/core/frame.js) */
 .ltf-frame { position: relative; flex: 1; min-height: 0; background: var(--frame-bg, #000); overflow: hidden; }
 .ltf-frame > iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--frame-bg, #000); }
 .frame-loading { position: absolute; inset: 0; display: grid; place-items: center; background: var(--frame-bg, #000); z-index: 1; }
 .frame-spinner { width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.12); border-top-color: var(--accent-color); animation: spin .8s linear infinite; }
+
+/* Native error screens (codes from src/web/error.rs) */
 .frame-notice {
-  position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 8px;
+  position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 10px;
   padding: 32px; text-align: center; background: var(--surface-solid); color: var(--text);
+  animation: pop-in var(--dur) var(--ease);
 }
-.frame-notice > span svg { width: 36px; height: 36px; color: var(--text-3); }
-.frame-notice b { font-size: var(--fs-lg); font-weight: 600; }
-.frame-notice p { margin: 0; max-width: 460px; color: var(--text-2); font-size: var(--fs-sm); }
-.frame-notice code { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--accent-color-strong); background: var(--accent-color-soft); padding: 2px 8px; border-radius: 4px; }
+.frame-error-icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 6px;
+  background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+.frame-error-icon svg { width: 30px; height: 30px; }
+.frame-notice h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.frame-notice p { margin: 0; max-width: 460px; color: var(--text-2); font-size: var(--fs); line-height: 1.5; }
+.frame-notice p.frame-error-detail { font-size: var(--fs-sm); color: var(--text-3); }
+.frame-notice code { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-3); letter-spacing: .04em; }
 .frame-placeholder { background: repeating-linear-gradient(135deg, var(--surface-2) 0 12px, transparent 12px 24px), var(--surface-solid); outline: 2px dashed var(--border-strong); outline-offset: -14px; }
-.frame-actions { display: flex; gap: 8px; margin-top: 8px; }
+.frame-placeholder .frame-error-icon { background: var(--surface-3); color: var(--text-2); }
+.frame-placeholder code { color: var(--accent-color-strong); background: var(--accent-color-soft); padding: 2px 8px; border-radius: 4px; }
+.frame-actions { display: flex; gap: 8px; margin-top: 10px; }
 
 /* Iframes swallow pointer events; disable them while the WM drags/resizes. */
 body.wm-interacting iframe, body.is-dragging iframe { pointer-events: none; }

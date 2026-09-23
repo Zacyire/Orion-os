@@ -60,3 +60,10 @@
 
 /* Maximized geometry is enforced by class so it tracks the work area on resize. */
 .window.maximized { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
+
+/* App-level title bar controls (web-apps: reload / home / open externally / panel) */
+.win-app-controls { display: flex; align-items: center; gap: 2px; margin-right: 4px; }
+.win-app-btn { width: 30px; height: 28px; display: grid; place-items: center; border-radius: var(--radius-sm); color: var(--text-2); transition: background var(--dur-fast), color var(--dur-fast); }
+.win-app-btn:hover { background: var(--surface-hover); color: var(--text); }
+.win-app-btn.active { color: var(--accent-color); background: var(--accent-color-soft); }
+.win-app-btn svg { width: 14px; height: 14px; }

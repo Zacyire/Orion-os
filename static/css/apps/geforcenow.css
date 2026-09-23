@@ -1,15 +1,5 @@
-/* GeForce NOW */
-.gfn { --gfn: #76b900; --gfn-hi: #9be22d; background: radial-gradient(1200px 500px at 15% -10%, #1f3006 0%, transparent 60%), #0b0c0e; color: #e8eaed; }
-.gfn-launch { flex: 1; overflow-y: auto; padding: 28px 32px 36px; }
-.gfn-hero { display: flex; align-items: center; gap: 28px; padding: 28px; border-radius: 12px; background: linear-gradient(120deg, #101a04, #0d0f0b 60%); border: 1px solid #22301022; box-shadow: inset 0 0 0 1px #76b90022; }
-.gfn-hero h1 { margin: 0 0 6px; font-size: 32px; font-weight: 700; letter-spacing: -.3px; }
-.gfn-hero p { margin: 0 0 18px; color: #a9b0a0; max-width: 560px; }
-.gfn-hero .app-icon.xl { width: 104px; height: 104px; filter: drop-shadow(0 0 24px #76b90066); }
+/* GeForce NOW — diagnostics panel (apps/panels/geforcenow.js) */
 .gfn-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-.gfn-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 22px; border-radius: 4px; background: var(--gfn); color: #0b0b0b; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: var(--fs-sm); transition: filter var(--dur-fast); }
-.gfn-btn:hover { filter: brightness(1.12); }
-.gfn-btn svg { width: 15px; height: 15px; }
-.gfn-btn.ghost { background: #ffffff12; color: #fff; }
 .gfn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 16px; }
 .gfn-card { padding: 16px 18px; border-radius: 10px; background: #14161a; border: 1px solid #23262c; display: grid; gap: 10px; align-content: start; }
 .gfn-card header { display: flex; align-items: center; gap: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: var(--fs-xs); color: #a9b0a0; }
@@ -35,12 +25,9 @@
 .gfn-cap .no { background: #ff5a6726; color: var(--danger); }
 .gfn-field { display: grid; gap: 4px; }
 .gfn-field small { color: #8b9199; }
-.gfn-session { position: absolute; inset: 0; display: flex; flex-direction: column; background: #000; }
-.gfn-session-bar { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 8px; background: #0b0c0e; border-bottom: 1px solid #1c1f24; font-size: var(--fs-sm); }
-.gfn-session-bar .spacer { flex: 1; }
-.gfn-bar-btn { width: 32px; height: 30px; display: grid; place-items: center; border-radius: 4px; color: #cfd3d8; }
-.gfn-bar-btn:hover { background: #ffffff14; }
-.gfn-bar-btn svg { width: 15px; height: 15px; }
-.gfn-live { display: flex; align-items: center; gap: 6px; color: var(--gfn-hi); font-weight: 600; }
-.gfn-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--gfn); box-shadow: 0 0 8px var(--gfn); }
-.gfn-bar-ping b { font-family: var(--font-mono); font-weight: 400; color: #a9b0a0; margin-right: 6px; }
+
+.gfn-panel { --gfn: #76b900; --gfn-hi: #9be22d; padding: 18px; display: grid; gap: 12px; align-content: start; }
+.gfn-panel h2 { margin: 0 0 4px; font-size: var(--fs-lg); }
+.gfn-panel .gfn-card { background: var(--surface-2); border-color: var(--border); }
+.gfn-panel .gfn-card header, .gfn-panel .gfn-stat-row small, .gfn-panel .gfn-netinfo dt, .gfn-panel .gfn-hint, .gfn-panel .gfn-field small, .gfn-panel .gfn-empty { color: var(--text-2); }
+.gfn-actions { display: flex; gap: 8px; }

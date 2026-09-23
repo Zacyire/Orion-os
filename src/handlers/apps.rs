@@ -18,6 +18,7 @@ pub async fn list(State(state): State<SharedState>) -> Json<Vec<Value>> {
         .iter()
         .map(|app| {
             let mut v = serde_json::to_value(app).unwrap_or_default();
+            v["module"] = json!(app.resolved_module());
             v["installed"] = json!(app.system || installed.contains(&app.id));
             v
         })
@@ -28,11 +29,12 @@ pub async fn list(State(state): State<SharedState>) -> Json<Vec<Value>> {
 
 fn custom_to_catalog(c: &CustomApp) -> Value {
     json!({
-        "id": c.id, "name": c.name, "module": "embed", "icon": "web", "category": "Web",
+        "id": c.id, "name": c.name, "type": "web-app", "module": "webapp", "icon": "web", "category": "Web",
         "description": c.url, "developer": "Added by you", "version": "web",
         "system": false, "custom": true, "installed": true, "color": c.color,
         "default_size": [1120, 720],
-        "embed": { "url": c.url, "proxy": c.proxy },
+        "target": c.url, "navigation": "limited", "controls": ["reload", "home", "external"],
+        "proxy": if c.proxy { "isolated" } else { "off" },
     })
 }
 

@@ -125,7 +125,7 @@ export default {
       sound() {
         return [
           h('h1.page-title', 'Sound'),
-          rangeRow('volume', 'Master volume', 'Applies to NotNetflix, Spiceify and other media apps.',
+          rangeRow('volume', 'Master volume', 'Applies to Spiceify, Vapor and other media apps.',
             { min: 0, max: 100, value: system.volume, format: (v) => `${v}%` }, (v) => system.setVolume(v)),
           toggleRow('mute', 'Mute', 'Silence all output.', system.muted, () => system.toggleMute()),
         ];
@@ -142,7 +142,7 @@ export default {
             'Platform': `${info.platform} (${info.arch})`, 'Uptime': `${Math.floor(info.uptime_secs / 60)} min`,
           }).flatMap(([k, v]) => [h('dt', k), h('dd', v)]))) : h('div.card.muted', 'The LTF API server is unreachable. Preferences are stored in this browser until it returns.'),
           h('div.section-title', 'Server features'),
-          row('shield', 'Content proxy', feat.proxy_allowlist?.length ? `Allowed hosts: ${feat.proxy_allowlist.join(', ')}` : 'Frames sites that forbid embedding (LTF_PROXY, LTF_PROXY_ALLOW).', yes(feat.proxy)),
+          row('shield', 'Web layer (isolated mode & /net/ fetching)', feat.proxy_allowlist?.length ? `Allowed hosts: ${feat.proxy_allowlist.join(', ')}` : 'Any public host (LTF_PROXY, LTF_PROXY_ALLOW). Sites that forbid embedding are never shown in windows.', yes(feat.proxy)),
           row('search', 'YouTube search', 'Requires YOUTUBE_API_KEY on the server.', yes(feat.youtube_search)),
           h('div.section-title', 'Startup'),
           toggleRow('bolt', 'Fast startup', 'Skip the boot console animation.', store.get('boot.skipAnimation'), (v) => store.set('boot.skipAnimation', v)),

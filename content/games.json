@@ -1,5 +1,5 @@
 {
-  "_readme": "Vapor catalogue. launch.type: 'iframe' (game runs in an LTF OS window; url may be relative to static/ or absolute), 'proxy' (iframe via /proxy for sites that forbid framing) or 'external' (opens a new browser tab). cover = 16:9 art, capsule = 3:4 art (optional).",
+  "_readme": "Vapor catalogue. launch.type: 'iframe' (game runs in an LTF OS window; url may be relative to static/ or absolute), 'isolated' (rendered through /proxy/page in a cookie-less sandbox) or 'external' (opens a new browser tab). Sites that forbid embedding show an error screen with 'Open in browser tab'. cover = 16:9 art, capsule = 3:4 art (optional).",
   "featured": "blocks",
   "items": [
     {

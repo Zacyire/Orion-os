@@ -109,7 +109,7 @@ export const icons = {
  * per-instance suffix so gradient/filter references never collide.
  */
 export const tileArt = {
-  notnetflix: `<svg viewBox="0 0 64 64"><defs>
+  netflix: `<svg viewBox="0 0 64 64"><defs>
     <linearGradient id="nf-a__ID__" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b20710"/><stop offset="1" stop-color="#7a040a"/></linearGradient>
     <linearGradient id="nf-b__ID__" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff1a24"/><stop offset="1" stop-color="#d10812"/></linearGradient>
     <filter id="nf-s__ID__" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="0" stdDeviation="1.6" flood-color="#000" flood-opacity=".7"/></filter></defs>

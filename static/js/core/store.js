@@ -13,9 +13,9 @@ import { local } from './dom.js';
 const FALLBACK = {
   user: { name: 'User' },
   theme: { mode: 'dark', accent: '#4c8dff', transparency: true, glassOpacity: 0.62, wallpaper: 'default', animateWallpaper: true },
-  taskbar: { position: 'bottom', pinned: ['orion', 'notnetflix', 'spiceify', 'youtube', 'vapor', 'geforcenow', 'appstore'], autoHide: false, centered: true },
+  taskbar: { position: 'bottom', pinned: ['orion', 'netflix', 'spiceify', 'youtube', 'vapor', 'geforcenow', 'appstore'], autoHide: false, centered: true },
   desktop: { shortcuts: [
-    { app: 'orion', col: 0, row: 0 }, { app: 'notnetflix', col: 0, row: 1 }, { app: 'spiceify', col: 0, row: 2 },
+    { app: 'orion', col: 0, row: 0 }, { app: 'netflix', col: 0, row: 1 }, { app: 'spiceify', col: 0, row: 2 },
     { app: 'youtube', col: 0, row: 3 }, { app: 'vapor', col: 0, row: 4 }, { app: 'geforcenow', col: 0, row: 5 },
     { app: 'appstore', col: 1, row: 0 }, { app: 'notepad', col: 1, row: 1 }, { app: 'settings', col: 1, row: 2 },
   ] },
@@ -23,6 +23,13 @@ const FALLBACK = {
 };
 
 let prefs = structuredClone(FALLBACK);
+
+// Renamed app ids (mirrors RENAMED_APPS in src/state.rs) for locally cached prefs.
+const RENAMED = { notnetflix: 'netflix' };
+function migrateIds(p) {
+  if (Array.isArray(p.taskbar?.pinned)) p.taskbar.pinned = p.taskbar.pinned.map((id) => RENAMED[id] || id);
+  for (const s of p.desktop?.shortcuts || []) s.app = RENAMED[s.app] || s.app;
+}
 const dirty = new Set();
 let flushTimer;
 
@@ -41,6 +48,7 @@ export const store = {
     } catch {
       prefs = deepMerge(FALLBACK, cached || {});
     }
+    migrateIds(prefs);
     local.set('prefs', prefs);
     return prefs;
   },

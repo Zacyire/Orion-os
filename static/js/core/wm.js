@@ -66,7 +66,8 @@ class WindowManager {
       return notify(`Couldn't start ${app.name}`, err.message, { type: 'error' });
     }
 
-    if (mod.single) {
+    const single = typeof mod.single === 'function' ? mod.single(app) : mod.single;
+    if (single) {
       const existing = this.byApp(appId)[0];
       if (existing) {
         if (existing.minimized) this.restore(existing.id);
@@ -93,9 +94,11 @@ class WindowManager {
 
     const titleEl = h('span.win-title', args.title || app.name);
     const maxBtn = h('button.win-max', { title: 'Maximize', 'aria-label': 'Maximize', html: icons.maximize });
+    const appControls = h('div.win-app-controls');
     const titlebar = h('header.win-titlebar',
       appIcon(app, 'sm'),
       titleEl,
+      appControls,
       h('div.win-controls',
         h('button.win-min', { title: 'Minimize', 'aria-label': 'Minimize', html: icons.minimize }),
         maxBtn,
@@ -111,7 +114,7 @@ class WindowManager {
     if (mod.theme) el.classList.add(`theme-${mod.theme}`);
 
     const win = {
-      id, app, appId: app.id, el, body, titleEl, maxBtn,
+      id, app, appId: app.id, el, body, titleEl, maxBtn, appControls,
       minimized: false, maximized: false, prev: null, instance: null, cleanup: null,
       title: args.title || app.name,
     };
@@ -146,6 +149,19 @@ class WindowManager {
         focus: () => this.focus(win.id),
         isFocused: () => this.focusedId === win.id,
         flash: () => bus.emit('wm:attention', win.id),
+        /**
+         * App-level controls rendered in the title bar (used by web-apps
+         * instead of browser chrome): [{ icon, title, onClick, active? }].
+         */
+        setControls: (controls = []) => {
+          win.appControls.replaceChildren(...controls.map((c) => {
+            const b = h(`button.win-app-btn${c.active ? '.active' : ''}`, { title: c.title, 'aria-label': c.title, html: icons[c.icon] || icons.info });
+            b.addEventListener('click', (e) => { e.stopPropagation(); c.onClick?.(b); });
+            b.addEventListener('dblclick', (e) => e.stopPropagation());
+            return b;
+          }));
+        },
+        isMinimized: () => win.minimized,
       },
       app: win.app,
       args,
@@ -200,6 +216,11 @@ class WindowManager {
     this.#animate(w);
     w.el.classList.add('minimized');
     w.minimized = true;
+    // After the animation, stop painting the window entirely (iframes inside
+    // keep running — media continues — unless the app suspends itself).
+    clearTimeout(w._hideT);
+    w._hideT = setTimeout(() => { if (w.minimized) w.el.style.visibility = 'hidden'; }, 460);
+    w.instance?.onMinimize?.();
     if (this.focusedId === id) this.#focusNext();
     bus.emit('wm:changed');
   }
@@ -208,9 +229,12 @@ class WindowManager {
     const w = this.windows.get(id);
     if (!w) return;
     if (w.minimized) {
+      clearTimeout(w._hideT);
+      w.el.style.visibility = '';
       this.#animate(w);
       w.el.classList.remove('minimized');
       w.minimized = false;
+      w.instance?.onRestore?.();
     }
     this.focus(id);
     bus.emit('wm:changed');
@@ -234,6 +258,7 @@ class WindowManager {
     w.el.classList.toggle('maximized', w.maximized);
     w.maxBtn.innerHTML = w.maximized ? icons.restore : icons.maximize;
     w.maxBtn.title = w.maximized ? 'Restore' : 'Maximize';
+    bus.emit('wm:changed');
     setTimeout(() => w.instance?.onResize?.(), 450);
   }
 

@@ -1,13 +1,15 @@
 //! LTF OS — backend entry point.
 //!
 //! Serves the desktop shell from `static/`, the JSON API under `/api`, the
-//! content proxy at `/proxy` and a WebSocket event bus at `/ws`.
+//! web layer (`/api/web/inspect`, `/proxy/page`, `/proxy/fetch`, `/net/…`;
+//! see src/web/mod.rs) and a WebSocket event bus at `/ws`.
 
 mod catalog;
 mod config;
 mod error;
 mod handlers;
 mod state;
+mod web;
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -35,7 +37,13 @@ async fn main() -> Result<(), BoxError> {
     let config = Config::from_env();
     let port = config.port;
     let static_dir = config.static_dir.clone();
-    tracing::info!(proxy = config.proxy_enabled, youtube_search = config.youtube_api_key.is_some(), "configuration loaded");
+    tracing::info!(
+        proxy = config.proxy_enabled,
+        allowlist = config.proxy_allow.len(),
+        rate_limit_per_min = config.rate_limit_per_min,
+        youtube_search = config.youtube_api_key.is_some(),
+        "configuration loaded"
+    );
     if config.proxy_allow_private {
         tracing::warn!("LTF_PROXY_ALLOW_PRIVATE is set: /proxy can reach private and loopback addresses");
     }
@@ -58,12 +66,19 @@ async fn main() -> Result<(), BoxError> {
         .route("/files/{name}/download", get(files::download))
         .route("/content/{kind}", get(content::get))
         .route("/youtube/search", get(youtube::search))
-        .route("/frame-check", get(proxy::frame_check))
         .layer(middleware::from_fn(require_client_header));
 
+    // Web layer (src/web): everything that contacts remote sites, rate limited per client.
+    let web_routes = Router::new()
+        .route("/api/web/inspect", get(web::inspect::handler))
+        .route("/proxy/page", get(web::page::handler))
+        .route("/proxy/fetch", get(web::fetch::by_query))
+        .route("/net/{target}", get(web::fetch::by_path))
+        .route_layer(middleware::from_fn_with_state(state.clone(), web::limit::middleware));
+
     let app = Router::new()
+        .merge(web_routes)
         .nest("/api", api)
-        .route("/proxy", get(proxy::proxy))
         .route("/ws", get(ws::upgrade))
         .fallback_service(ServeDir::new(&static_dir).append_index_html_on_directories(true))
         .layer(CompressionLayer::new())
@@ -73,7 +88,7 @@ async fn main() -> Result<(), BoxError> {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("LTF OS listening on http://localhost:{port}");
-    axum::serve(listener, app)
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
             tracing::info!("shutting down");

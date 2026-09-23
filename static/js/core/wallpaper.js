@@ -6,13 +6,14 @@
 //   video → <video autoplay loop muted playsinline>   (primary)
 //   image → <img>
 //   procedural → <canvas> gradient (built-in fallback, no media required)
-// Playback pauses when animation is disabled, the tab is hidden, or the user
-// prefers reduced motion.
+// Playback pauses when animation is disabled, the tab is hidden, a maximized
+// window covers the desktop, or the user prefers reduced motion.
 
 import { $, h } from './dom.js';
 import { api } from './api.js';
 import { store } from './store.js';
 import { bus } from './events.js';
+import { wm } from './wm.js';
 
 const PROCEDURAL = { id: 'procedural', name: 'Procedural gradient', type: 'procedural' };
 const BUILTIN = { id: 'aurora-ridge', name: 'Aurora Ridge', type: 'video', src: 'media/wallpapers/aurora-ridge.webm', poster: 'media/wallpapers/aurora-ridge.jpg' };
@@ -22,6 +23,7 @@ let root;
 let manifest = { default: BUILTIN.id, items: [BUILTIN] };
 let active = null; // { item, el, stop? }
 let animate = true;
+let covered = false; // a maximized window hides the wallpaper completely
 
 export const wallpaper = {
   async init() {
@@ -31,6 +33,11 @@ export const wallpaper = {
     store.watch('theme', (th) => this.apply(th));
     document.addEventListener('visibilitychange', () => syncPlayback());
     reducedMotion.addEventListener?.('change', () => syncPlayback());
+    // Don't decode video nobody can see: pause while a maximized window covers the desktop.
+    bus.on('wm:changed', () => {
+      const next = wm.list.some((w) => w.maximized && !w.minimized);
+      if (next !== covered) { covered = next; syncPlayback(); }
+    });
     this.apply(store.get('theme'));
   },
 
@@ -107,7 +114,7 @@ function reveal(layer, prev) {
 
 function syncPlayback() {
   const el = active?.el;
-  const run = animate && !document.hidden && !reducedMotion.matches;
+  const run = animate && !covered && !document.hidden && !reducedMotion.matches;
   if (el instanceof HTMLVideoElement) {
     if (run) el.play().catch(() => { /* autoplay blocked until interaction */ });
     else el.pause();

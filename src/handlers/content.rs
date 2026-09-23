@@ -12,7 +12,7 @@ use crate::{
     state::{read_json, SharedState},
 };
 
-const KINDS: &[&str] = &["movies", "music", "games", "youtube", "wallpapers"];
+const KINDS: &[&str] = &["music", "games", "youtube", "wallpapers"];
 const VIDEO_EXT: &[&str] = &["mp4", "webm", "mov", "m4v"];
 
 pub async fn get(State(state): State<SharedState>, Path(kind): Path<String>) -> ApiResult<Json<Value>> {

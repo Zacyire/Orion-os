@@ -1,6 +1,6 @@
 // Vapor — game store & library. Catalogue: content/games.json.
-// Launch types: 'iframe' (own window via the embed host), 'proxy' (iframe via
-// /proxy) and 'external' (new browser tab). Library ownership and play time
+// Launch types: 'iframe' (own window via the web-app container), 'isolated'
+// (rendered through /proxy/page) and 'external' (new browser tab). Library ownership and play time
 // are stored per device.
 import { h, local, fill } from '../core/dom.js';
 import { icons } from '../core/icons.js';
@@ -55,8 +55,9 @@ export default {
         window.open(l.url, '_blank', 'noopener');
         return render();
       }
+      // Games open in the hidden "webplayer" web-app (apps/webapp.js), one window each.
       const win = await ctx.open('webplayer', {
-        url: l.url, proxy: l.type === 'proxy', title: g.title, size: l.size, chrome: false,
+        url: l.url, proxy: l.type === 'isolated' || l.type === 'proxy', title: g.title, size: l.size,
         allow: 'autoplay; fullscreen; gamepad',
       });
       if (win) sessions.set(win.id, { id: g.id, start: Date.now() });

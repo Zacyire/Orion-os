@@ -9,7 +9,7 @@ pub struct Config {
     pub data_dir: PathBuf,
     /// Frontend files served at `/`.
     pub static_dir: PathBuf,
-    /// Creator-managed catalogues (movies, music, games, videos, wallpapers).
+    /// Creator-managed catalogues (music, games, videos, wallpapers).
     pub content_dir: PathBuf,
     /// Whether `/proxy` is enabled at all.
     pub proxy_enabled: bool,
@@ -18,6 +18,14 @@ pub struct Config {
     /// Allow `/proxy` to reach private/loopback addresses. Off by default;
     /// only for development or trusted intranet deployments (SSRF risk).
     pub proxy_allow_private: bool,
+    /// Route outbound requests through HTTP(S)_PROXY from the environment.
+    /// Off by default: an intermediate proxy re-resolves DNS, which would
+    /// bypass the address pinning that protects against DNS rebinding.
+    pub use_env_proxy: bool,
+    /// Trust `X-Forwarded-For` for rate limiting (only behind your own reverse proxy).
+    pub trust_proxy_headers: bool,
+    /// Web-layer requests allowed per client per minute (`LTF_RATE_LIMIT`).
+    pub rate_limit_per_min: u32,
     /// YouTube Data API v3 key for `/api/youtube/search`.
     pub youtube_api_key: Option<String>,
 }
@@ -35,6 +43,9 @@ impl Config {
                 .map(|v| v.split(',').map(|s| s.trim().trim_start_matches('.').to_lowercase()).filter(|s| !s.is_empty()).collect())
                 .unwrap_or_default(),
             proxy_allow_private: var("LTF_PROXY_ALLOW_PRIVATE").is_some_and(|v| v == "1" || v == "true"),
+            use_env_proxy: var("LTF_USE_ENV_PROXY").is_some_and(|v| v == "1" || v == "true"),
+            trust_proxy_headers: var("LTF_TRUST_PROXY_HEADERS").is_some_and(|v| v == "1" || v == "true"),
+            rate_limit_per_min: var("LTF_RATE_LIMIT").and_then(|v| v.parse().ok()).unwrap_or(240),
             youtube_api_key: var("YOUTUBE_API_KEY"),
         }
     }

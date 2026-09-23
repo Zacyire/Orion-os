@@ -26,12 +26,17 @@ async function request(method, path, body, { raw = false, headers = {} } = {}) {
   }
   setOnline(true);
   if (!res.ok) {
+    // Errors are either { error: "text" } (API) or { error: { code, message } } (web layer).
     let msg = res.statusText;
+    let code = res.status >= 500 ? 'SERVER_ERROR' : undefined;
     try {
-      msg = (await res.json()).error || msg;
+      const e = (await res.json()).error;
+      if (typeof e === 'string') msg = e;
+      else if (e) ({ message: msg, code = code } = e);
     } catch { /* not json */ }
     const err = new Error(msg);
     err.status = res.status;
+    err.code = code;
     throw err;
   }
   if (raw) return res;
@@ -46,8 +51,18 @@ function setOnline(v) {
   }
 }
 
-/** URL that loads `target` through the server-side content proxy. */
-export const proxyUrl = (target) => `/proxy?url=${encodeURIComponent(target)}`;
+/** Isolated document mode: `target` rendered via /proxy/page (sandboxed, opaque origin). */
+export const pageUrl = (target) => `/proxy/page?url=${encodeURIComponent(target)}`;
+
+/**
+ * Internal URL for a remote resource: `/net/<encoded url>`. Served by the
+ * backend (src/web/fetch.rs) and cached by the service worker (sw.js). Use
+ * it for images/data the browser can't load or read cross-origin.
+ */
+export const netUrl = (target) => `/net/${encodeURIComponent(target)}`;
+
+// Preflight results are memoised briefly on the client as well (the server caches for 5 min).
+const inspectMemo = new Map();
 
 export const api = {
   get: (p, o) => request('GET', p, undefined, o),
@@ -63,6 +78,20 @@ export const api = {
     } catch {
       return { items: [] };
     }
+  },
+
+  /**
+   * Preflight a URL before showing it in a window (src/web/inspect.rs).
+   * Resolves to { ok, final_url, status, content_type, embeddable, blocked_by,
+   * isolated_available } or rejects with err.code (INVALID_URL, BLOCKED_REQUEST, …).
+   */
+  inspect(url) {
+    const hit = inspectMemo.get(url);
+    if (hit && Date.now() - hit.at < 60_000) return hit.promise;
+    const promise = api.get(`/web/inspect?url=${encodeURIComponent(url)}`);
+    inspectMemo.set(url, { at: Date.now(), promise });
+    promise.catch(() => inspectMemo.delete(url));
+    return promise;
   },
 
   /** Round-trip latency to the API server in ms (median of `n` pings). */

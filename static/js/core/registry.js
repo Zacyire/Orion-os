@@ -5,16 +5,32 @@
 //     single?: true,                                      // one window per app
 //     mount(body, ctx) { ...; return () => cleanup(); }  // required
 //   }
-//   mount may also return { destroy, onFocus, onResize, onArgs, beforeClose }.
+//   mount may also return { destroy, onFocus, onResize, onArgs, beforeClose,
+//   onMinimize, onRestore }.
 //
-// Adding a new app = add an entry to /apps.json + drop a module file. Apps
-// that only wrap a URL can use module "embed" with an `embed` descriptor.
+// App types: "native" (a module), "web-app" (a website as an app — only
+// `target` needed, rendered by apps/webapp.js) and "browser" (Orion).
 
 import { api } from './api.js';
 import { bus } from './events.js';
 import { local } from './dom.js';
 
 let catalog = [];
+
+/**
+ * Fill defaults so a minimal entry such as
+ *   { "id": "example", "name": "Example", "type": "web-app", "target": "https://example.com" }
+ * is a complete app. Mirrors CatalogApp in src/catalog.rs.
+ */
+function normalize(a) {
+  const type = a.type || 'native';
+  return {
+    icon: 'web', category: 'Web', description: '', developer: '', version: '1.0.0', default_size: [1180, 740],
+    ...a,
+    type,
+    module: a.module || (type === 'web-app' ? 'webapp' : type === 'browser' ? 'orion' : a.id),
+  };
+}
 const byId = new Map();
 
 export const registry = {
@@ -29,7 +45,7 @@ export const registry = {
       const installed = new Set(local.get('installed', all.map((a) => a.id)));
       apps = all.map((a) => ({ ...a, installed: a.system || installed.has(a.id) }));
     }
-    catalog = apps;
+    catalog = apps.map(normalize);
     byId.clear();
     for (const a of apps) byId.set(a.id, a);
     bus.emit('registry:changed');
@@ -70,9 +86,9 @@ export const registry = {
     bus.emit('registry:changed', { id, installed: false });
   },
 
-  /** Register any website as a desktop app (rendered by apps/embed.js). */
+  /** Register any website as a desktop app (a `web-app`, rendered by apps/webapp.js). */
   async addCustom({ name, url, color, proxy }) {
-    const app = await api.post('/apps/custom', { name, url, color, proxy });
+    const app = normalize(await api.post('/apps/custom', { name, url, color, proxy }));
     catalog.push(app);
     byId.set(app.id, app);
     bus.emit('registry:changed', { id: app.id, installed: true });

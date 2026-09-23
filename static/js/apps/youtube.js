@@ -1,10 +1,16 @@
-// YouTube — video browser built on the official IFrame embed player.
+// YouTube — fallback experience for the YouTube web-app.
+//
+// The registry entry is a web-app targeting www.youtube.com, but youtube.com
+// forbids embedding (X-Frame-Options), which LTF OS respects. apps/webapp.js
+// therefore mounts this module as the app's sanctioned alternative: YouTube's
+// official IFrame embed player (youtube-nocookie.com) plus the Data API.
 // Home feed: content/youtube.json. Search: GET /api/youtube/search (needs
 // YOUTUBE_API_KEY on the server). Pasting any YouTube link or video id plays
 // it directly, with or without a key.
 import { h, local, fill } from '../core/dom.js';
 import { icons, appIcon } from '../core/icons.js';
 import { createFrame } from '../core/frame.js';
+import { netUrl } from '../core/api.js';
 
 const ID_RE = /^[\w-]{11}$/;
 
@@ -25,7 +31,8 @@ export function parseVideoId(input) {
   }
 }
 
-const thumbUrl = (v) => v.thumbnail || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`;
+// Thumbnails go through /net/ so the service worker caches them.
+const thumbUrl = (v) => netUrl(v.thumbnail || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`);
 // Hide the image (keeping the placeholder tile) if the thumbnail host is unreachable.
 const thumbImg = (v) => h('img', { src: thumbUrl(v), alt: '', loading: 'lazy', onerror: (e) => (e.target.hidden = true) });
 const embedUrl = (id) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1&modestbranding=1`;

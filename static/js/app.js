@@ -23,6 +23,13 @@ async function init() {
   await wallpaper.init();
   connectEvents();
   bindShortcuts();
+  registerServiceWorker();
+}
+
+/** static/sw.js: /net/ resource caching + offline shell. Never blocks boot. */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => console.warn('[sw] registration failed', err));
 }
 
 function bindShortcuts() {

@@ -30,7 +30,7 @@
 .or-address { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: var(--fs); }
 .or-mode { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 15px; font-size: var(--fs-xs); color: var(--text-2); border: 1px solid var(--border); }
 .or-mode svg { width: 13px; height: 13px; }
-.or-mode[data-mode="proxy"] { color: var(--accent-color-strong); border-color: var(--accent-color); background: var(--accent-color-soft); }
+.or-mode[data-mode="isolated"] { color: var(--accent-color-strong); border-color: var(--accent-color); background: var(--accent-color-soft); }
 .or-mode:hover { background: var(--surface-hover); }
 .or-content { position: relative; flex: 1; min-height: 0; }
 .or-page { position: absolute; inset: 0; display: flex; background: #fff; }

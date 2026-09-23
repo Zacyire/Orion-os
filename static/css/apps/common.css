@@ -51,9 +51,6 @@
 .info-grid dt { color: var(--text-2); }
 .info-grid dd { margin: 0; }
 
-/* Generic embed app toolbar */
-.embed-bar { gap: 6px; }
-.embed-url { font-size: var(--fs-xs); color: var(--text-3); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
 /* Settings */
 .set-range { display: flex; align-items: center; gap: 12px; width: min(260px, 100%); }
@@ -68,3 +65,12 @@
 .account-card h2 { margin: 0; }
 .account-card p { margin: 4px 0 0; }
 .avatar.lg { width: 72px; height: 72px; font-size: 28px; }
+
+/* Web-app container (apps/webapp.js): content edge-to-edge, optional side panel */
+.webapp { background: #000; }
+.webapp-panel {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 5; width: min(380px, 100%); overflow-y: auto;
+  background: var(--mica); backdrop-filter: blur(var(--system-glass-blur-strong)); -webkit-backdrop-filter: blur(var(--system-glass-blur-strong));
+  border-left: 1px solid var(--border); box-shadow: var(--shadow); animation: panel-in var(--dur-slow) var(--ease);
+}
+@keyframes panel-in { from { transform: translateX(24px); opacity: 0; } }

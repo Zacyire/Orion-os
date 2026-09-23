@@ -1,15 +1,19 @@
-// Orion — web browser.
+// Orion — the general-purpose browser ("type": "browser" in the registry).
 //
-// Each tab owns an AppFrame. Loading modes:
-//   auto   — load directly; if /api/frame-check reports X-Frame-Options /
-//            frame-ancestors, switch to the server proxy automatically.
-//   direct — always a plain cross-origin iframe (full site capability).
-//   proxy  — always through /proxy (sandboxed, opaque origin, no cookies).
-// Proxied pages report navigation/titles via postMessage (see SHIM in
-// src/handlers/proxy.rs); messages are only accepted from the tab's own frame.
+// Orion is the only app with full navigation chrome (address bar, tabs,
+// back/forward/reload, bookmarks). Each tab owns an AppFrame (core/frame.js),
+// the same web container that web-apps use. Loading modes:
+//   direct   — the site in a normal cross-origin iframe (its own cookies,
+//              logins, DRM and security policies apply).
+//   isolated — the page rendered via /proxy/page in an opaque-origin sandbox
+//              (no cookies); navigation and titles are reported back so the
+//              address bar and history stay in sync.
+// Either way every URL is preflighted by /api/web/inspect; a site that
+// forbids embedding shows EMBEDDING_NOT_ALLOWED with "Open in browser tab".
 import { h, local, fill } from '../core/dom.js';
 import { icons } from '../core/icons.js';
 import { createFrame, SANDBOX_WEB } from '../core/frame.js';
+import { netUrl } from '../core/api.js';
 
 const SEARCH = 'https://html.duckduckgo.com/html/?q=';
 const DEFAULT_DIAL = [
@@ -20,7 +24,11 @@ const DEFAULT_DIAL = [
   { title: 'OpenStreetMap', url: 'https://www.openstreetmap.org/' },
   { title: 'Hacker News', url: 'https://news.ycombinator.com/' },
 ];
-const MODES = { auto: 'Auto', direct: 'Direct', proxy: 'Proxy' };
+const MODES = { direct: 'Direct', isolated: 'Isolated' };
+const MODE_HELP = {
+  direct: 'Sites load normally in their own origin — sign-ins and media work.',
+  isolated: 'Pages render through the LTF OS server in a sandbox without cookies; the address bar follows navigation.',
+};
 
 /** Turn address-bar input into a URL: explicit URL, bare domain, or search. */
 export function toUrl(input) {
@@ -33,14 +41,16 @@ export function toUrl(input) {
 }
 
 const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
-const favicon = (u) => { try { return `https://icons.duckduckgo.com/ip3/${new URL(u).hostname}.ico`; } catch { return ''; } };
+// Favicons go through /net/ so the service worker can cache them.
+const favicon = (u) => { try { return netUrl(`https://icons.duckduckgo.com/ip3/${new URL(u).hostname}.ico`); } catch { return ''; } };
 
 export default {
   mount(root, ctx) {
     let tabs = [];
     let active = null;
     let seq = 0;
-    let mode = local.get('orion:mode', 'auto');
+    let mode = { auto: 'direct', proxy: 'isolated' }[local.get('orion:mode')] || local.get('orion:mode', 'direct');
+    if (!MODES[mode]) mode = 'direct';
     let bookmarks = local.get('orion:bookmarks', []);
 
     // ── chrome ──
@@ -53,7 +63,7 @@ export default {
     const lock = h('span.or-lock');
     const address = h('input.or-address', { spellcheck: false, placeholder: 'Search or enter address', 'aria-label': 'Address' });
     const star = h('button.or-nav', { html: icons.star2, title: 'Bookmark this page' });
-    const modeBtn = h('button.or-mode', { title: 'Loading mode: Auto → Direct → Proxy' });
+    const modeBtn = h('button.or-mode', { title: 'Loading mode: Direct ⇄ Isolated' });
     const extBtn = h('button.or-nav', { html: icons.external, title: 'Open in a real browser tab' });
     const content = h('div.or-content');
     root.append(h('div.app.orion',
@@ -88,9 +98,8 @@ export default {
           tab.title = hostOf(u);
           tab.dial.hidden = true;
           ensureFrame(tab);
-          const useProxy = mode === 'proxy';
-          tab.proxied = useProxy;
-          tab.frame.load(u, { proxy: useProxy, check: mode === 'auto' });
+          tab.proxied = mode === 'isolated';
+          tab.frame.load(u, { isolated: tab.proxied });
           sync();
         },
         home() {
@@ -121,14 +130,20 @@ export default {
         title: 'Web page',
         sandbox: SANDBOX_WEB,
         allow: 'autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; geolocation',
-        onBlocked: (url, info) => {
-          // Auto mode: transparently retry through the proxy when allowed.
-          if (mode === 'auto' && info.proxy_available) {
-            tab.proxied = true;
-            tab.frame.load(url, { proxy: true, check: false });
-            sync();
-          }
+        onLoad: (cur) => { tab.proxied = cur.isolated; if (tab === active) sync(); },
+        onError: () => { if (tab === active) sync(); },
+        // Isolated pages report in-page navigation → keep address bar & history in sync.
+        onNavigate: (url) => {
+          if (url === tab.url) return;
+          tab.history = tab.history.slice(0, tab.index + 1);
+          tab.history.push(url);
+          tab.index = tab.history.length - 1;
+          tab.url = url;
+          tab.title = hostOf(url);
+          if (tab === active) sync(); else renderTabs();
         },
+        onTitle: (t) => { if (t) { tab.title = t.slice(0, 80); if (tab === active) sync(); else renderTabs(); } },
+        onOpen: (url) => openTab(url, true),
       });
       tab.el.append(tab.frame.el);
     }
@@ -174,7 +189,7 @@ export default {
       star.classList.toggle('on', !!t?.url && bookmarks.some((b) => b.url === t.url));
       const secure = t?.url?.startsWith('https:');
       lock.innerHTML = t?.url ? (t.proxied ? icons.shield : secure ? icons.lock : icons.info) : icons.search;
-      lock.title = !t?.url ? '' : t.proxied ? 'Loaded through the LTF proxy (sandboxed)' : secure ? 'Secure connection' : 'Not secure';
+      lock.title = !t?.url ? '' : t.proxied ? 'Isolated: rendered by the LTF OS server in a sandbox' : secure ? 'Secure connection' : 'Not secure';
       lock.dataset.state = t?.proxied ? 'proxy' : secure ? 'secure' : 'plain';
       ctx.win.setTitle(t?.url ? `${t.title} — Orion` : 'Orion');
       renderTabs();
@@ -191,7 +206,7 @@ export default {
           h('div.or-dial-grid', dial.map((d) => h('button.or-dial-item', { onclick: () => tab.go(d.url), title: d.url },
             h('span.or-dial-icon', h('img', { src: favicon(d.url), alt: '', onerror: (e) => e.target.replaceWith(h('span', { html: icons.globe })) })),
             h('span', d.title)))),
-          h('p.or-dial-note', 'Mode ', h('b', MODES[mode]), ': sites that refuse to be embedded are loaded through the LTF proxy automatically. Proxied pages run sandboxed and cannot keep you signed in.'),
+          h('p.or-dial-note', h('b', `${MODES[mode]} mode. `), MODE_HELP[mode], ' Sites that don’t allow embedding can be opened in a normal browser tab.'),
         ));
     }
 
@@ -202,9 +217,9 @@ export default {
     homeBtn.addEventListener('click', () => active?.home());
     extBtn.addEventListener('click', () => active?.url && window.open(active.url, '_blank', 'noopener'));
     modeBtn.addEventListener('click', () => {
-      mode = { auto: 'direct', direct: 'proxy', proxy: 'auto' }[mode];
+      mode = mode === 'direct' ? 'isolated' : 'direct';
       local.set('orion:mode', mode);
-      ctx.notify(`Loading mode: ${MODES[mode]}`, { auto: 'Direct, with automatic proxy fallback.', direct: 'Always load sites directly.', proxy: 'Always load through the server proxy.' }[mode], { timeout: 2200 });
+      ctx.notify(`${MODES[mode]} mode`, MODE_HELP[mode], { timeout: 2600 });
       if (active?.url) active.go(active.url, { push: false });
       else renderDial(active);
       renderModeBtn();
@@ -219,33 +234,11 @@ export default {
       sync();
     });
 
-    // ── messages from proxied pages ──
-    const onMessage = (e) => {
-      const d = e.data;
-      if (!d || d.source !== 'ltf-proxy') return;
-      const tab = tabs.find((t) => t.frame?.iframe && e.source === t.frame.iframe.contentWindow);
-      if (!tab) return;
-      if (d.type === 'navigate' && typeof d.url === 'string' && d.url !== tab.url) {
-        tab.history = tab.history.slice(0, tab.index + 1);
-        tab.history.push(d.url);
-        tab.index = tab.history.length - 1;
-        tab.url = d.url;
-        tab.title = hostOf(d.url);
-      } else if (d.type === 'title' && typeof d.title === 'string' && d.title.trim()) {
-        tab.title = d.title.trim().slice(0, 80);
-      } else if (d.type === 'open' && /^https?:/.test(d.url)) {
-        openTab(d.url, true);
-      }
-      if (tab === active) sync(); else renderTabs();
-    };
-    window.addEventListener('message', onMessage);
-
     openTab(ctx.args.url);
     return {
       onArgs(a) { if (a.url) openTab(a.url); },
       onFocus() { if (!active?.url) address.focus(); },
       destroy() {
-        window.removeEventListener('message', onMessage);
         tabs.forEach((t) => t.frame?.destroy());
       },
     };
