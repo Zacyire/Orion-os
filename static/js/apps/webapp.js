@@ -3,6 +3,12 @@
 // Every registry entry with "type": "web-app" is rendered by this module;
 // nothing app-specific lives here. Registry fields (static/apps.json):
 //
+//   runtime      how the target is loaded (default "direct"):
+//                  "direct"   — load target in the existing sandboxed iframe
+//                  "embed"    — same container; target is a provider-supplied
+//                               embed URL (e.g. an official player)
+//                  "external" — don't embed; show an "Open in Orion" screen
+//                               (for sites that can't or shouldn't be framed)
 //   target       URL the app opens (required)                 "https://example.com/"
 //   navigation   "limited" (default): the site navigates within itself; links to
 //                other sites open in Orion. "none": pinned to the target page.
@@ -21,6 +27,7 @@
 // Orion ("type": "browser") is the only general-purpose browser.
 
 import { h } from '../core/dom.js';
+import { icons } from '../core/icons.js';
 import { createFrame } from '../core/frame.js';
 
 const FALLBACK_CODES = new Set(['EMBEDDING_NOT_ALLOWED', 'SITE_UNAVAILABLE', 'NETWORK_TIMEOUT']);
@@ -38,11 +45,37 @@ export default {
     const app = ctx.app;
     const args = ctx.args || {};
     const target = args.url || app.target;
+    const runtime = args.runtime || app.runtime || 'direct';
     const isolated = args.proxy === true || args.proxy === 'isolated' || app.proxy === 'isolated';
     let fallbackInstance = null;
     let panel = null;
 
     if (args.title) ctx.win.setTitle(args.title);
+
+    // "external" runtime: never embed — present an Orion hand-off instead. Used
+    // for sites that decline framing, so the app degrades gracefully rather
+    // than showing a broken frame. No network request is made here.
+    if (runtime === 'external') return mountExternal();
+
+    function mountExternal() {
+      ctx.win.setControls([{ icon: 'external', title: 'Open in browser tab', onClick: () => window.open(target, '_blank', 'noopener') }]);
+      const container = h('div.app.webapp');
+      const host = (() => { try { return new URL(target).host; } catch { return target; } })();
+      container.append(h('div.frame-notice.frame-placeholder',
+        h('div.frame-error-icon', { html: icons.globe }),
+        h('h2', `${app.name} opens in Orion`),
+        h('p', 'This app is configured to open its site in the Orion browser, where full navigation is available.'),
+        h('code', host),
+        h('div.frame-actions',
+          h('button.btn.primary', { onclick: () => { ctx.open('orion', { url: target }); ctx.win.close(); } }, h('span', { html: icons.globe }), 'Open in Orion'),
+          h('button.btn', { onclick: () => window.open(target, '_blank', 'noopener') }, h('span', { html: icons.external }), 'Open in browser tab'),
+        ),
+      ));
+      root.append(container);
+      return {
+        onArgs(a) { if (a.url) ctx.open('orion', { url: a.url }); },
+      };
+    }
 
     const frame = createFrame({
       slot: `${app.id}.main`,

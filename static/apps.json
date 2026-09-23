@@ -59,12 +59,25 @@
     "developer": "LTF", "system": true, "default_size": [920, 620]
   },
   {
-    "id": "webtest", "name": "Web Test", "type": "web-app", "icon": "globe", "category": "System",
-    "description": "Temporary: loads example.com through the existing web-app container to verify the runtime.",
+    "id": "test-direct", "name": "Direct Test", "type": "web-app", "runtime": "direct", "icon": "globe", "category": "System",
+    "description": "Temporary: runtime=direct loads example.com in the existing sandboxed iframe.",
     "developer": "LTF", "default_size": [1000, 700],
     "target": "https://example.com/",
-    "navigation": "limited", "addressBar": false, "browserControls": false,
     "controls": ["reload", "home", "external"]
+  },
+  {
+    "id": "test-embed", "name": "Embed Test", "type": "web-app", "runtime": "embed", "icon": "globe", "category": "System",
+    "description": "Temporary: runtime=embed loads an official provider embed (YouTube privacy-enhanced player).",
+    "developer": "LTF", "default_size": [1000, 640],
+    "target": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ",
+    "allow": "accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen",
+    "controls": ["reload", "external"]
+  },
+  {
+    "id": "test-external", "name": "External Test", "type": "web-app", "runtime": "external", "icon": "globe", "category": "System",
+    "description": "Temporary: runtime=external — a site that refuses framing; opens in Orion instead.",
+    "developer": "LTF", "default_size": [900, 620],
+    "target": "https://www.google.com/"
   },
   {
     "id": "webplayer", "name": "Vapor Player", "type": "web-app", "icon": "vapor", "category": "Games",
