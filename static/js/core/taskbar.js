@@ -11,7 +11,7 @@ import { dnd } from './dnd.js';
 import { contextMenu } from './contextmenu.js';
 import { flyouts } from './flyouts.js';
 import { system } from './system.js';
-import { online } from './api.js';
+import { api, online } from './api.js';
 import { notify } from './notify.js';
 
 const POSITIONS = ['bottom', 'top', 'left', 'right'];
@@ -23,9 +23,7 @@ export const taskbar = {
   init() {
     itemsEl = $('#tb-items');
     $('#start-btn').innerHTML = icons.logo;
-    $('#widgets-btn').innerHTML = icons.widgets;
     $('#show-desktop').addEventListener('click', () => wm.toggleDesktop());
-    $('#widgets-btn').addEventListener('click', () => bus.emit('widgets:toggle'));
 
     this.applyLayout(store.get('taskbar'));
     store.watch('taskbar', (tb) => {
@@ -79,9 +77,7 @@ export const taskbar = {
       { label: 'Center icons', icon: 'grid', checked: tb.centered, action: () => store.set('taskbar.centered', !tb.centered) },
       { label: 'Automatically hide', icon: 'eye', checked: tb.autoHide, action: () => store.set('taskbar.autoHide', !tb.autoHide) },
       '-',
-      { label: 'Show widgets', icon: 'widgets', checked: !document.body.classList.contains('widgets-hidden'), action: () => bus.emit('widgets:toggle') },
       { label: 'Show desktop', icon: 'desktop', action: () => wm.toggleDesktop() },
-      { label: 'Task Manager', icon: 'chart', disabled: !registry.isInstalled('taskmgr'), action: () => wm.open('taskmgr') },
       '-',
       { label: 'Taskbar settings', icon: 'settings', action: () => wm.open('settings', { page: 'taskbar' }) },
     ];
@@ -232,21 +228,19 @@ export const taskbar = {
   _setupTray() {
     const net = $('#tray-net');
     const vol = $('#tray-vol');
-    const bat = $('#tray-bat');
     const renderTray = () => {
-      const connected = netOnline && system.toggles.wifi;
+      const connected = navigator.onLine && netOnline;
       net.innerHTML = connected ? icons.wifi : icons.wifiOff;
-      net.title = connected ? 'LTF-Net (connected)' : 'Disconnected';
+      net.title = !navigator.onLine ? 'No internet connection' : netOnline ? 'Connected' : 'LTF server unreachable';
       vol.innerHTML = system.muted || system.volume === 0 ? icons.mute : system.volume < 50 ? icons.volumeLow : icons.volume;
       vol.title = `Volume: ${system.muted ? 'muted' : `${system.volume}%`}`;
-      bat.innerHTML = icons.battery;
     };
     renderTray();
     bus.on('system:volume', renderTray);
-    bus.on('system:toggles', renderTray);
     bus.on('net', (v) => { netOnline = v; renderTray(); });
+    window.addEventListener('online', renderTray);
+    window.addEventListener('offline', renderTray);
 
-    // Clock
     const time = $('#clock-time');
     const date = $('#clock-date');
     const tick = () => {
@@ -270,40 +264,32 @@ export const taskbar = {
     calBtn.addEventListener('click', () => flyouts.toggle(cal, calBtn, { onOpen: () => renderCalendar(cal) }));
   },
 
+  /** Network status (real measurements) + master volume. */
   _renderQuickSettings(el) {
-    const t = system.toggles;
-    const tile = (key, label, icon) => {
-      const b = h(`button.qs-tile${t[key] ? '.on' : ''}`, { html: icons[icon] }, h('span', label));
-      b.addEventListener('click', () => {
-        system.setToggle(key, !system.toggles[key]);
-        if (key === 'night') document.documentElement.classList.toggle('night-light', system.toggles.night);
-        if (key === 'saver') store.set('theme.animateWallpaper', !system.toggles.saver);
-        this._renderQuickSettings(el);
-      });
-      return b;
-    };
+    const conn = navigator.connection;
+    const latency = h('b', '…');
+    const row = (label, value) => h('div.qs-row', h('span', label), value instanceof Node ? value : h('b', value));
     const range = h('input', { type: 'range', min: 0, max: 100, value: system.volume, 'aria-label': 'Volume' });
+    const muteBtn = h('button.icon-btn', { html: system.muted ? icons.mute : icons.volume, title: 'Mute' });
     syncRange(range);
     range.addEventListener('input', () => { system.setVolume(+range.value); syncRange(range); muteBtn.innerHTML = icons[system.volume ? 'volume' : 'mute']; });
-    const muteBtn = h('button.icon-btn', { html: system.muted ? icons.mute : icons.volume, title: 'Mute' });
     muteBtn.addEventListener('click', () => { system.toggleMute(); muteBtn.innerHTML = system.muted ? icons.mute : icons.volume; });
 
-    const bright = h('input', { type: 'range', min: 30, max: 100, value: Math.round((parseFloat(document.documentElement.style.getPropertyValue('--brightness')) || 1) * 100), 'aria-label': 'Brightness' });
-    syncRange(bright);
-    bright.addEventListener('input', () => { document.documentElement.style.setProperty('--brightness', bright.value / 100); syncRange(bright); });
-
     el.replaceChildren(
-      h('div.qs-grid',
-        tile('wifi', 'Wi-Fi', 'wifi'), tile('bluetooth', 'Bluetooth', 'bluetooth'), tile('airplane', 'Airplane', 'plane'),
-        tile('saver', 'Battery saver', 'eco'), tile('focus', 'Focus', 'focus'), tile('night', 'Night light', 'moon'),
+      h('div.qs-head', h('span', { html: navigator.onLine ? icons.wifi : icons.wifiOff }), h('div', h('b', navigator.onLine ? 'Connected' : 'Offline'), h('small', netOnline ? 'LTF server reachable' : 'LTF server unreachable'))),
+      h('div.qs-rows',
+        row('Server latency', latency),
+        conn?.effectiveType ? row('Connection', conn.effectiveType.toUpperCase()) : null,
+        conn?.downlink ? row('Estimated downlink', `${conn.downlink} Mb/s`) : null,
+        conn?.rtt ? row('Network RTT', `${conn.rtt} ms`) : null,
       ),
-      h('div.qs-slider', h('span', { html: icons.sun }), bright),
       h('div.qs-slider', muteBtn, range),
       h('div.qs-footer',
-        h('span', '🔋 87%  ·  ', netOnline ? 'Kernel online' : 'Offline mode'),
+        h('span', 'Master volume applies to media apps'),
         h('button.icon-btn', { html: icons.settings, title: 'All settings', onclick: () => { flyouts.close(); wm.open('settings'); } }),
       ),
     );
+    api.latency(3).then((ms) => (latency.textContent = `${ms} ms`)).catch(() => (latency.textContent = 'unreachable'));
   },
 };
 

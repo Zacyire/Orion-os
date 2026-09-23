@@ -1,0 +1,30 @@
+{
+  "_readme": "Vapor catalogue. launch.type: 'iframe' (game runs in an LTF OS window; url may be relative to static/ or absolute), 'proxy' (iframe via /proxy for sites that forbid framing) or 'external' (opens a new browser tab). cover = 16:9 art, capsule = 3:4 art (optional).",
+  "featured": "blocks",
+  "items": [
+    {
+      "id": "blocks", "title": "Blocks", "developer": "LTF Games", "released": "2026",
+      "genres": ["Puzzle", "Arcade"], "price": "Free",
+      "description": "A falling-block puzzle game with ghost pieces, wall kicks, hard drop and progressive speed.",
+      "controls": "Arrow keys to move and rotate, Space to hard drop, P to pause.",
+      "cover": "games/covers/blocks.svg",
+      "launch": { "type": "iframe", "url": "games/blocks.html", "size": [560, 700] }
+    },
+    {
+      "id": "snake", "title": "Snake", "developer": "LTF Games", "released": "2026",
+      "genres": ["Arcade"], "price": "Free",
+      "description": "The classic: steer, grow and avoid your own tail. Speed increases as you eat.",
+      "controls": "Arrow keys or WASD to steer, P to pause.",
+      "cover": "games/covers/snake.svg",
+      "launch": { "type": "iframe", "url": "games/snake.html", "size": [700, 580] }
+    },
+    {
+      "id": "pong", "title": "Pong", "developer": "LTF Games", "released": "2026",
+      "genres": ["Sports", "Arcade"], "price": "Free",
+      "description": "Table tennis against a computer opponent. First to seven points wins.",
+      "controls": "W/S or Up/Down to move your paddle, P to pause.",
+      "cover": "games/covers/pong.svg",
+      "launch": { "type": "iframe", "url": "games/pong.html", "size": [720, 520] }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+//! Runtime configuration, read once from environment variables.
+
+use std::path::PathBuf;
+
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub port: u16,
+    /// Mutable runtime state: preferences, installs, user documents.
+    pub data_dir: PathBuf,
+    /// Frontend files served at `/`.
+    pub static_dir: PathBuf,
+    /// Creator-managed catalogues (movies, music, games, videos, wallpapers).
+    pub content_dir: PathBuf,
+    /// Whether `/proxy` is enabled at all.
+    pub proxy_enabled: bool,
+    /// Optional host allowlist for `/proxy` (suffix match). Empty = any public host.
+    pub proxy_allow: Vec<String>,
+    /// Allow `/proxy` to reach private/loopback addresses. Off by default;
+    /// only for development or trusted intranet deployments (SSRF risk).
+    pub proxy_allow_private: bool,
+    /// YouTube Data API v3 key for `/api/youtube/search`.
+    pub youtube_api_key: Option<String>,
+}
+
+impl Config {
+    pub fn from_env() -> Self {
+        let var = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
+        Self {
+            port: var("PORT").and_then(|p| p.parse().ok()).unwrap_or(8080),
+            data_dir: var("LTF_DATA_DIR").unwrap_or_else(|| "data".into()).into(),
+            static_dir: var("LTF_STATIC_DIR").unwrap_or_else(|| "static".into()).into(),
+            content_dir: var("LTF_CONTENT_DIR").unwrap_or_else(|| "content".into()).into(),
+            proxy_enabled: var("LTF_PROXY").map(|v| v != "0" && v != "false" && v != "off").unwrap_or(true),
+            proxy_allow: var("LTF_PROXY_ALLOW")
+                .map(|v| v.split(',').map(|s| s.trim().trim_start_matches('.').to_lowercase()).filter(|s| !s.is_empty()).collect())
+                .unwrap_or_default(),
+            proxy_allow_private: var("LTF_PROXY_ALLOW_PRIVATE").is_some_and(|v| v == "1" || v == "true"),
+            youtube_api_key: var("YOUTUBE_API_KEY"),
+        }
+    }
+}

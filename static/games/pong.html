@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pong</title>
+  <link rel="stylesheet" href="game.css" />
+</head>
+<body>
+  <header><h2 id="title">Pong</h2><span>Score <b id="score">0</b></span><span>Best <b id="best">0</b></span></header>
+  <main><canvas id="game" tabindex="0"></canvas><div id="overlay" hidden></div></main>
+  <footer id="help"></footer>
+  <script type="module">
+    import { Pong } from './engine.js';
+    import { run } from './runner.js';
+    run(Pong, 'pong');
+  </script>
+</body>
+</html>

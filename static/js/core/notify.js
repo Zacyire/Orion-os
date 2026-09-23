@@ -4,7 +4,7 @@ import { icons } from './icons.js';
 /** Show a toast notification. type: info | success | error */
 export function notify(title, message = '', { type = 'info', timeout = 4200 } = {}) {
   const el = h(`div.toast.${type}`, { role: 'status' },
-    h('div', { html: type === 'error' ? icons.info : type === 'success' ? icons.check : icons.sparkles, style: { width: '20px', color: type === 'error' ? 'var(--danger)' : 'var(--accent)', flex: 'none' } }),
+    h('div', { html: type === 'error' ? icons.info : type === 'success' ? icons.check : icons.sparkles, style: { width: '20px', color: type === 'error' ? 'var(--danger)' : 'var(--accent-color)', flex: 'none' } }),
     h('div', h('b', title), message && h('p', message)),
   );
   el.addEventListener('click', () => dismiss(el));

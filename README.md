@@ -1,118 +1,193 @@
 # LTF OS
 
-A web desktop operating system with a Windows 11 "rice" look, an Arch Linux–style boot, and a Ninja Low Taper Fade loading spinner. The backend is Rust (Axum). The frontend is vanilla ES modules with no framework and no build step.
+LTF OS is a web platform for games and media that looks and works like a desktop operating system. The backend is Rust (Axum) and serves the API, content catalogues, a content proxy and a WebSocket event bus. The frontend is plain ES modules with no framework and no build step.
 
-## Run it
+Every app runs as an isolated container. It either embeds a real service in an iframe, or plays real media from a catalogue you edit as JSON. There are no mock data sources.
+
+## Quick start
 
 ```bash
 cargo run --release
 # → http://localhost:8080
 ```
 
-| Env var          | Default  | Purpose                                  |
-|------------------|----------|------------------------------------------|
-| `PORT`           | `8080`   | HTTP port                                |
-| `LTF_DATA_DIR`   | `data`   | Preferences, installed apps, documents   |
-| `LTF_STATIC_DIR` | `static` | Frontend files                           |
-| `RUST_LOG`       | `ltf_os=info` | Log filter                          |
+`cargo test` runs the backend tests: SSRF address filtering, proxy target validation, allowlist matching, HTML rewriting, `frame-ancestors` parsing, JSON merge-patch, path-traversal rejection and catalogue validity.
 
-`cargo test` runs the backend unit tests: merge-patch semantics, path-traversal rejection and catalog validity.
+### Configuration
 
-The frontend also boots without the backend, for example from a static host. Preferences and installs fall back to `localStorage` and the metrics are simulated.
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT` | `8080` | HTTP port |
+| `LTF_DATA_DIR` | `data` | Runtime state: prefs, installs, web apps, Notepad documents |
+| `LTF_STATIC_DIR` | `static` | Frontend files |
+| `LTF_CONTENT_DIR` | `content` | Content catalogues (see below). Re-read on every request. |
+| `LTF_PROXY` | `1` | Set to `0` to disable `/proxy` |
+| `LTF_PROXY_ALLOW` | *(empty)* | Comma-separated host allowlist for the proxy, e.g. `wikipedia.org,archive.org`. Subdomains match. Empty means any public host. |
+| `LTF_PROXY_ALLOW_PRIVATE` | `0` | **Development or trusted intranet only.** Lets the proxy reach private and loopback addresses. |
+| `YOUTUBE_API_KEY` | *(unset)* | YouTube Data API v3 key. Enables search in the YouTube app. |
+| `RUST_LOG` | `ltf_os=info` | Log filter |
 
-## Features
+The outbound client trusts both the bundled Mozilla roots and the operating system's certificate store (including `SSL_CERT_FILE`). This means it also works behind corporate TLS-inspecting proxies.
 
-- **Boot:** a systemd/Arch log (`[  OK  ] Reached target …`), streamed from `/api/system/boot-log`. A spinning Ninja LTF sits in the corner with a progress bar, then it crossfades into the desktop. Press `Esc` to skip. Settings → System → *Fast boot* turns the animation off.
-  - To use the real meme, drop it in as `static/assets/ninja-ltf.png`. Otherwise the bundled SVG mascot is used.
-- **Look:** Acrylic/Mica glass (`backdrop-filter`), dark and light modes, 10 accent presets or any custom colour, and a transparency toggle.
-- **Live wallpaper (Canvas):** three modes: *particle network* (reacts to the cursor), *aurora* and *synthwave*. You can pause the animation from Settings, the desktop menu, or Quick settings → Battery saver. It also pauses automatically when the tab is hidden.
-- **Taskbar:**
-  - Docks to the **bottom, top, left or right** edge. Change it by right-clicking the taskbar or desktop, or in Settings → Taskbar.
-  - Optional centered icons and auto-hide.
-  - Running and focused indicators, and a window count when an app has several windows.
-  - Hover previews.
-  - Quick settings: Wi-Fi, Bluetooth, night light, brightness and volume (scroll over the tray to change volume).
-  - Calendar flyout.
+## The desktop
+
+- **Boot console:** Arch Linux / systemd style kernel and unit output. The unit list comes from `/api/system/boot-log` and reflects real configuration, e.g. whether the proxy is enabled and whether YouTube search is configured. It fades into the desktop when initialisation finishes. `Esc` skips it; Settings → System → *Fast startup* turns it off.
+- **Live wallpaper:** a `<video autoplay loop muted playsinline>` layer. Wallpapers crossfade and pause when the tab is hidden, when animation is turned off, or under `prefers-reduced-motion`. If a video can't play, its poster image is shown, then a canvas gradient.
+- **Taskbar:** docks to the bottom, top, left or right. Change it by right-clicking the taskbar or desktop, or in Settings → Taskbar. It has the Start button, pinned and running apps, a network indicator (browser online state, server reachability and measured round-trip latency) and a clock with a calendar.
 - **Drag and drop:**
-  - Drag a taskbar app onto the desktop to create a shortcut. The icon snaps to the grid, with a ghost preview.
-  - Drag a desktop icon or Start menu app onto the taskbar to pin it at the drop position.
-  - Drag desktop icons to rearrange them; dropping on an occupied cell swaps the two.
-  - Rubber-band selection, and `Del` removes the selected shortcuts.
-- **Windows:**
-  - Drag, resize from 8 edges, focus and z-order.
-  - Minimize animates into the app's taskbar icon.
-  - Maximize or restore; double-clicking the title bar does the same.
-  - Snap by dragging to the top edge (maximize) or the left/right edges (half screen).
-  - Title bar context menu.
-- **Widgets:** clock (digital or analog; click to switch), performance (live over WebSocket), weather and quick notes. You can drag them anywhere, and their positions persist on the server.
-- **Keyboard shortcuts:**
-  - `Ctrl+Space`: Start
-  - `Alt+W`: close window
-  - `Alt+M`: minimize
-  - `Alt+↑`: maximize
-  - `Alt+D`: show desktop
-  - `Ctrl+Alt+T`: terminal
-  - `Ctrl+Alt+L`: lock
+  - Drag an app from the taskbar or Start onto the desktop to make a shortcut. It snaps to the grid.
+  - Drag a desktop icon onto the taskbar to pin it at that position.
+  - Rearrange desktop icons by dragging; dropping on an occupied cell swaps them.
+- **Windows:** drag, resize from 8 edges, snap (top edge maximizes, left/right edges tile), minimize into the taskbar icon, maximize and restore. Iframes are given focus correctly, and their pointer events are paused during drags so a drag can't get stuck inside embedded content.
 
-### Apps
+## Apps
 
-| App | Module | Highlights |
-|-----|--------|-----------|
-| **App Store** | `appstore.js` | Browse by category, search, install (with a progress bar), uninstall, open. |
-| **Cinema** (movies) | `movies.js` | Custom video controls: seek with hover time, buffered bar, speed, PiP, fullscreen, keyboard shortcuts. Playlist with posters, plus local file playback. |
-| **Groove** (music) | `music.js` | Tracks are **synthesized live with WebAudio**, so no audio files are needed. Play/pause, seek, shuffle, repeat (all/one/off), volume. Generated album art and a canvas visualizer with three modes (bars, radial, wave). |
-| **Arcade** (games) | `games.js` | Neon Snake, Fade Blocks (Tetris-style) and Taper Pong, with saved high scores. |
-| **Notepad** | `notepad.js` | Text/Markdown editor with live preview. Save and open through the Rust `/api/files` endpoints, upload (multipart) and download (`Content-Disposition`). Local draft autosave, `Ctrl+S`. |
-| **FadeNOW** (cloud gaming) | `cloudgaming.js` | GeForce NOW–style portal: hero banner, game cards by tier, a live latency widget, region/server picker with ping and load, and quality presets. A queue leads into a stream view with an embedded game and a stats HUD. |
-| Files | `explorer.js` | Browse, open, upload (drag and drop), download and delete documents. |
-| Settings | `settings.js` | Personalization, taskbar, widgets, sound, system info, reset. |
-| Terminal | `terminal.js` | `neofetch`, `ls`, `cat`, `echo > file`, `pacman -S <app>`, `theme #hex`, `taskbar left`, and more. |
-| Task Manager | `taskmgr.js` | Live CPU/RAM/GPU/network graphs, per-core load, "End task". |
-| Calculator, Sketch | `calculator.js`, `paint.js` | Available to install from the App Store. |
+| App | Module | What it embeds / plays | Content source |
+|---|---|---|---|
+| **Orion** | `orion.js` | Any website. Tabs, history, bookmarks, and *Auto / Direct / Proxy* loading modes | User input |
+| **NotNetflix** | `notnetflix.js` | Titles as direct video (`mp4`/`webm`), HLS (`.m3u8` via hls.js) or an embed URL. Resume, My List, search | `content/movies.json` |
+| **Spiceify** | `spiceify.js` | Audio files through `<audio>` with a Web Audio visualizer, plus streaming-service players (Spotify, SoundCloud, …) as embeds | `content/music.json` |
+| **GeForce NOW** | `geforcenow.js` | The cloud-gaming portal, with gamepad, fullscreen, clipboard and microphone permissions. Launcher shows live latency and jitter, connected controllers (Gamepad API), and WebRTC / H.264 / AV1 decode support | `apps.json → geforcenow.embed.url` |
+| **Vapor** | `vapor.js` | Game store and library. Each game launches in its own window (iframe, proxied iframe, or a new tab). Tracks play time | `content/games.json` |
+| **YouTube** | `youtube.js` | The official embed player (`youtube-nocookie.com`). Curated home feed, search, or paste any link or video ID | `content/youtube.json` + API |
+| **App Store** | `appstore.js` | Install and remove apps; **Add web app** turns any URL into a desktop app | `static/apps.json` + `data/custom_apps.json` |
+| **Notepad** | `notepad.js` | Text and Markdown editor. Saves to the server (`/api/files`), with upload and download | `data/files/` |
+| Settings | `settings.js` | Wallpaper, accent colour, glass opacity, taskbar position, account, sound, server features | — |
 
-## Architecture
+Three HTML5 games (Blocks, Snake, Pong) ship in `static/games/` as a working example of the Vapor launch path.
 
-```
-src/
-  main.rs            router, static serving, compression, graceful shutdown
-  state.rs           AppState: prefs (JSON), installed apps, simulated metrics, WS broadcast bus
-  catalog.rs         App Registry: embeds static/apps.json (single source of truth)
-  error.rs           ApiError → JSON error responses
-  handlers/
-    system.rs        /api/system/{info,stats,boot-log}, /api/weather
-    prefs.rs         GET/PUT/PATCH (RFC 7396 merge-patch) /api/prefs, POST /api/prefs/reset
-    apps.rs          GET /api/apps, POST /api/apps/{id}/install, DELETE /api/apps/{id}
-    files.rs         /api/files list/read/write/delete, /upload (multipart), /{name}/download
-    media.rs         /api/media/{tracks,videos}, /api/cloud/{games,servers,session}
-    ws.rs            /ws event stream (metrics every second, prefs/app/file events)
-static/
-  index.html         shell markup (boot screen, desktop, taskbar, flyouts)
-  apps.json          app catalogue, shared by the backend and the offline frontend
-  css/styles.css     shell styles; every token is a CSS custom property
-  css/apps.css       app styles
-  js/app.js          entry: boot → load prefs/registry → init shell
-  js/core/           wm, taskbar, startmenu, desktop, dnd, widgets, wallpaper, boot, store, api, …
-  js/lib/            synth (WebAudio engine), games (canvas games), markdown
-  js/apps/           one ES module per app
+### Embed slots
+
+Every embedded surface is created with `createFrame()` from `static/js/core/frame.js`. Each one carries a `data-slot` label. When no URL is configured, the slot shows a clearly marked placeholder naming itself:
+
+| Slot | Where the URL comes from |
+|---|---|
+| `geforcenow.session` | `static/apps.json` → `geforcenow.embed.url`, or the portal URL field in the launcher |
+| `youtube.player` | Video ID chosen in the app |
+| `spiceify.embed.<id>` | `content/music.json` → `embeds[].url` |
+| `player.embed` | `content/movies.json` → `items[].source` with `type: "embed"` |
+| `orion.tab.<n>` | Address bar |
+| `<app-id>.frame` | `embed.url` of any app using the generic `embed` module |
+
+`createFrame` calls `/api/frame-check` first. If a site forbids embedding (via `X-Frame-Options` or CSP `frame-ancestors`), the slot offers *Load through proxy* or *Open in new tab* instead of showing a blank frame.
+
+## Adding content
+
+All catalogues live in `content/`. They are plain JSON, served by `GET /api/content/<kind>` and re-read on every request, so no restart is needed. Each file has a `_readme` field describing its schema.
+
+```jsonc
+// content/movies.json — one title
+{ "id": "my-film", "title": "My Film", "year": 2026, "rating": "PG", "duration": "1h 42m",
+  "genres": ["Drama"], "description": "…", "poster": "…", "backdrop": "…",
+  "source": { "type": "video", "src": "https://cdn.example.com/my-film.mp4" } }
+  // or { "type": "hls", "src": ".../master.m3u8" }
+  // or { "type": "embed", "src": "https://player.example.com/embed/123" }
+
+// content/games.json — one game
+{ "id": "my-game", "title": "My Game", "genres": ["Action"], "cover": "games/covers/my-game.png",
+  "launch": { "type": "iframe", "url": "https://games.example.com/my-game/", "size": [1280, 720] } }
+  // type: "iframe" | "proxy" | "external"
 ```
 
-### Adding an app
+**Wallpapers:** drop any `.mp4`/`.webm`/`.mov` loop into `static/media/wallpapers/` and it appears in Settings automatically. A same-named `.jpg`/`.png`/`.webp` becomes its poster. Alternatively, list it in `content/wallpapers.json`, which also accepts absolute URLs. The default *Aurora Ridge* loop is original and was rendered with `tools/wallpaper/`.
 
-1. Add an entry to `static/apps.json` (`id`, `name`, `module`, `icon`, `category`, …).
-2. Create `static/js/apps/<module>.js`:
+## Adding an app
+
+**URL-only app (no code):** add an entry to `static/apps.json` with `"module": "embed"` and an `embed` descriptor:
+
+```json
+{ "id": "my-portal", "name": "My Portal", "module": "embed", "icon": "globe", "category": "Internet",
+  "description": "…", "developer": "…", "version": "1.0.0", "default_size": [1200, 760],
+  "embed": { "url": "https://portal.example.com/", "allow": "autoplay; fullscreen", "proxy": false } }
+```
+
+Users can do the same at runtime with **App Store → Add web app**.
+
+**Custom app:** create `static/js/apps/<module>.js`:
 
 ```js
+import { createFrame } from '../core/frame.js';
 export default {
-  single: true,              // optional: focus the existing window instead of opening another
-  mount(body, ctx) {         // ctx: { win, args, api, store, bus, notify, open }
-    body.textContent = 'Hello from my app';
-    return () => {};         // cleanup, or { destroy, onFocus, onResize, onArgs, beforeClose }
+  single: true,                       // optional: re-focus instead of opening a second window
+  mount(body, ctx) {                  // ctx: { win, app, args, api, store, bus, notify, open }
+    const frame = createFrame({ slot: 'my-app.main', url: 'https://…', allow: 'fullscreen' });
+    body.append(frame.el);
+    return { destroy: () => frame.destroy() };   // also: onFocus, onResize, onArgs, beforeClose
   },
 };
 ```
 
-3. Optionally, add a tile gradient in `js/core/icons.js` (`tileColors`).
+To give an app full-tile icon artwork, add an SVG to `tileArt` in `static/js/core/icons.js`. Otherwise it gets a gradient tile with a glyph.
 
-### Ricing
+## The content proxy
 
-All colours, blur, radii, spacing, fonts and timing live in `:root` in `static/css/styles.css`, e.g. `--accent`, `--blur`, `--radius-lg`, `--tb-size`, `--ease`. Settings writes `--accent` and a derived `--accent-2` at runtime.
+`GET /proxy?url=…` fetches a page on the server so it can be shown inside an iframe even when the site sends `X-Frame-Options` or `frame-ancestors`. In the page it returns, the server:
+
+- removes framing headers and any `<meta http-equiv>` policies;
+- injects `<base href>`, so images, scripts and stylesheets load directly from the original site;
+- injects a small script that routes link clicks and GET form submissions back through the proxy, and reports each navigation and page title to Orion.
+
+### Security model
+
+| Threat | Mitigation |
+|---|---|
+| SSRF | Only `http`/`https`, and no credentials in the URL. The host is resolved once and **every** returned address must be public: loopback, RFC 1918, link-local/metadata, CGNAT, ULA and IPv4-mapped addresses are all rejected. The connection is then pinned to that validated address, so DNS rebinding doesn't work. Redirects are not followed on the server; each hop comes back through `/proxy` and is checked again. |
+| Proxied pages attacking LTF OS | Responses carry `Content-Security-Policy: sandbox …` **without** `allow-same-origin`, and the iframe gets the same sandbox. Proxied pages therefore run in an opaque origin with no access to LTF OS storage, cookies or API responses (verified in the browser: `origin: "null"`, `localStorage` blocked). |
+| CSRF against the API | State-changing API calls require an `X-LTF-Client` header. That forces a CORS preflight, and the server sends no CORS headers, so no other origin can pass it. |
+| Abuse and cost | Optional host allowlist (`LTF_PROXY_ALLOW`), 20 s timeouts, and size caps of 6 MB for HTML and 32 MB for other resources. The proxy can be turned off entirely with `LTF_PROXY=0`. |
+
+### Limitations (by design)
+
+No cookies are forwarded, so you can't stay signed in to a site through the proxy. Services with DRM, WebRTC streaming or heavy client-side routing — Netflix, Spotify's web player, GeForce NOW — won't work through a proxy.
+
+For those services, use the official embed they provide (YouTube's embed player, Spotify's embed widgets), or open them in a new tab. The app frames offer the new-tab option automatically.
+
+Some sites' terms of service also forbid framing or proxying. Only point the proxy at content you are allowed to present this way.
+
+## Theming
+
+All visual values are CSS custom properties defined in `static/css/system/tokens.css`. The main ones:
+
+| Token | Meaning |
+|---|---|
+| `--accent-color` | Primary accent. Set from Settings; `--accent-color-2`, `-soft`, `-strong` and `-contrast` are derived from it. |
+| `--system-glass-opacity` | Opacity of every Acrylic/Mica surface. There's a slider for it in Settings. |
+| `--system-glass-rgb`, `--system-glass-blur`, `--system-glass-saturate`, `--system-glass-border` | Tint, blur and edge of glass surfaces |
+| `--tb-size`, `--radius*`, `--font`, `--ease`, `--dur*` | Geometry, type and motion |
+| `--wallpaper-dim` | Darkens the wallpaper for legibility |
+
+The stylesheets are split into a system layer (`css/system/`: tokens, base, boot, desktop, taskbar, flyouts, windows, menus) and an app layer (`css/apps/`, one file per app).
+
+## Project layout
+
+```
+src/
+  main.rs            router, CSRF guard, static files (range requests for video), graceful shutdown
+  config.rs          environment configuration
+  state.rs           prefs, installs, custom web apps, HTTP client, WebSocket broadcast
+  catalog.rs         app registry (embeds static/apps.json)
+  handlers/
+    proxy.rs         /proxy + /api/frame-check (SSRF guard, HTML rewriting, sandbox CSP)
+    content.rs       /api/content/{movies,music,games,youtube,wallpapers}
+    youtube.rs       /api/youtube/search (Data API v3; key stays on the server)
+    apps.rs          /api/apps (install, uninstall, custom web apps)
+    files.rs         /api/files (Notepad storage, multipart upload, download)
+    prefs.rs         /api/prefs (GET / PUT / PATCH merge-patch / reset)
+    system.rs        /api/system/{info,boot-log}, /api/ping
+    ws.rs            /ws event stream
+content/             creator catalogues (JSON)
+static/
+  apps.json          app catalogue
+  css/system/ …      design tokens + system components
+  css/apps/ …        per-app styles
+  js/core/           wm, frame, taskbar, startmenu, desktop, dnd, wallpaper, boot, store, api, theme, …
+  js/apps/           one module per app (+ embed.js generic container)
+  js/lib/            videoplayer (HLS-capable), markdown
+  games/             bundled HTML5 games + covers
+  media/wallpapers/  live wallpaper loops
+tools/wallpaper/     frame-exact WebCodecs renderer for original wallpaper loops
+```
+
+## Trademarks
+
+"YouTube" and "GeForce NOW" identify the third-party services those apps embed. The app icons are original artwork in the style of each service. Before a public or commercial deployment, review each provider's brand guidelines and terms of use. Also make sure every title in `content/` is licensed for your use. The bundled samples are Blender Foundation open movies (CC BY) and SoundHelix test tracks.

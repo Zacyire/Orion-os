@@ -1,0 +1,86 @@
+<!doctype html><body style="margin:0;background:#000"><canvas id="c" width="1920" height="1080"></canvas>
+<script>
+const T = 16; // seconds per seamless loop
+const c = document.getElementById('c'), x = c.getContext('2d');
+const W = c.width, H = c.height;
+let s = 1337; const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+const stars = Array.from({ length: 420 }, () => ({ x: rnd() * W, y: rnd() * H * 0.62, r: rnd() * 1.3 + 0.2, k: 1 + Math.floor(rnd() * 3), p: rnd() * 6.28 }));
+function ridge(seed, base, amp, rough) {
+  let a = seed; const r = () => ((a = (a * 1103515245 + 12345) >>> 0) / 2 ** 32);
+  const pts = []; const n = 160; const oct = [r(), r(), r(), r()];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n;
+    let y = Math.sin(u * 6.28 * 1.3 + oct[0] * 6) * 0.5 + Math.sin(u * 6.28 * 3.1 + oct[1] * 6) * 0.28 * rough + Math.sin(u * 6.28 * 7.7 + oct[2] * 6) * 0.12 * rough + Math.sin(u * 6.28 * 17 + oct[3] * 6) * 0.05 * rough;
+    pts.push([u * W, base - y * amp]);
+  }
+  return pts;
+}
+const layers = [
+  { pts: ridge(11, H * 0.60, 150, 1.0), col: ['#1b2447', '#141a33'] },
+  { pts: ridge(23, H * 0.68, 120, 1.2), col: ['#141b36', '#0f1428'] },
+  { pts: ridge(37, H * 0.77, 110, 1.4), col: ['#0d1226', '#0a0e1d'] },
+  { pts: ridge(51, H * 0.88, 90, 1.6), col: ['#070a16', '#05070f'] },
+];
+function draw(t) {
+  const ph = (t / T) * Math.PI * 2;
+  const sky = x.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#040614'); sky.addColorStop(0.45, '#0d1433'); sky.addColorStop(0.62, '#2a2350'); sky.addColorStop(0.72, '#5b3a5e');
+  x.fillStyle = sky; x.fillRect(0, 0, W, H);
+  // horizon glow
+  const g = x.createRadialGradient(W * 0.62, H * 0.66, 0, W * 0.62, H * 0.66, W * 0.6);
+  g.addColorStop(0, 'rgba(255,150,110,0.35)'); g.addColorStop(1, 'rgba(255,150,110,0)');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  for (const st of stars) { x.globalAlpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(ph * st.k + st.p)); x.fillStyle = '#fff'; x.fillRect(st.x, st.y, st.r, st.r); }
+  x.globalAlpha = 1;
+  // aurora curtains
+  x.globalCompositeOperation = 'lighter';
+  for (let band = 0; band < 3; band++) {
+    const hue = [150, 175, 285][band];
+    for (let i = 0; i < W; i += 6) {
+      const u = i / W;
+      const yc = H * (0.2 + band * 0.07) + Math.sin(u * 7 + ph + band * 2) * 60 + Math.sin(u * 13 - ph * 2 + band) * 22;
+      const hgt = 170 + Math.sin(u * 9 + ph * (band + 1)) * 70;
+      const a = 0.05 + 0.05 * (0.5 + 0.5 * Math.sin(u * 20 + ph * 3 + band));
+      const gr = x.createLinearGradient(0, yc - hgt, 0, yc + 40);
+      gr.addColorStop(0, `hsla(${hue},90%,60%,0)`); gr.addColorStop(0.75, `hsla(${hue},90%,62%,${a})`); gr.addColorStop(1, `hsla(${hue},90%,70%,0)`);
+      x.fillStyle = gr; x.fillRect(i, yc - hgt, 6, hgt + 40);
+    }
+  }
+  x.globalCompositeOperation = 'source-over';
+  // mountains + drifting fog (fog offset wraps exactly once per loop)
+  layers.forEach((L, li) => {
+    const gr = x.createLinearGradient(0, H * 0.4, 0, H); gr.addColorStop(0, L.col[0]); gr.addColorStop(1, L.col[1]);
+    x.fillStyle = gr; x.beginPath(); x.moveTo(0, H);
+    for (const [px, py] of L.pts) x.lineTo(px, py);
+    x.lineTo(W, H); x.fill();
+    const off = ((t / T) * W * (li % 2 ? -1 : 1) % W + W) % W;
+    for (const dx of [-W, 0, W]) {
+      const fx = off + dx;
+      for (let k = 0; k < 4; k++) {
+        const cx = fx + k * W / 4 + 120, cy = L.pts[0][1] + 20 + (k % 2) * 30;
+        x.save(); x.translate(cx, cy); x.scale(1, 0.14);
+        const fog = x.createRadialGradient(0, 0, 0, 0, 0, 560);
+        const a = 0.10 + li * 0.03;
+        fog.addColorStop(0, `rgba(150,160,215,${a})`); fog.addColorStop(0.6, `rgba(150,160,215,${a * 0.4})`); fog.addColorStop(1, 'rgba(150,160,215,0)');
+        x.fillStyle = fog; x.fillRect(-560, -560, 1120, 1120); x.restore();
+      }
+    }
+  });
+  // vignette
+  const v = x.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.75);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.55)');
+  x.fillStyle = v; x.fillRect(0, 0, W, H);
+}
+window.drawAt = draw;
+window.record = () => new Promise((resolve) => {
+  const stream = c.captureStream(30);
+  const rec = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 3_500_000 });
+  const chunks = []; rec.ondataavailable = (e) => chunks.push(e.data);
+  rec.onstop = async () => { const b = new Blob(chunks, { type: 'video/webm' }); const buf = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000)); resolve(btoa(s)); };
+  const t0 = performance.now();
+  rec.start(1000);
+  const loop = () => { const t = (performance.now() - t0) / 1000; draw(Math.min(t, T)); if (t < T) requestAnimationFrame(loop); else setTimeout(() => rec.stop(), 50); };
+  loop();
+});
+draw(0);
+</script>

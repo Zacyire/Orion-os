@@ -1,0 +1,86 @@
+#taskbar {
+  position: absolute; z-index: 5000;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  padding: 0 8px;
+  background: var(--mica);
+  backdrop-filter: blur(var(--system-glass-blur-strong)) saturate(var(--system-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--system-glass-blur-strong)) saturate(var(--system-glass-saturate));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), var(--highlight);
+  transition: all var(--dur-slow) var(--ease);
+}
+body.tb-bottom #taskbar { left: var(--tb-gap); right: var(--tb-gap); bottom: var(--tb-gap); height: var(--tb-size); }
+body.tb-top    #taskbar { left: var(--tb-gap); right: var(--tb-gap); top: var(--tb-gap); height: var(--tb-size); }
+body.tb-left   #taskbar { top: var(--tb-gap); bottom: var(--tb-gap); left: var(--tb-gap); width: var(--tb-size); flex-direction: column; padding: 8px 0; }
+body.tb-right  #taskbar { top: var(--tb-gap); bottom: var(--tb-gap); right: var(--tb-gap); width: var(--tb-size); flex-direction: column; padding: 8px 0; }
+
+body.tb-autohide.tb-bottom #taskbar:not(:hover):not(.pinned-open) { transform: translateY(calc(100% + var(--tb-gap) - 4px)); }
+body.tb-autohide.tb-top    #taskbar:not(:hover):not(.pinned-open) { transform: translateY(calc(-100% - var(--tb-gap) + 4px)); }
+body.tb-autohide.tb-left   #taskbar:not(:hover):not(.pinned-open) { transform: translateX(calc(-100% - var(--tb-gap) + 4px)); }
+body.tb-autohide.tb-right  #taskbar:not(:hover):not(.pinned-open) { transform: translateX(calc(100% + var(--tb-gap) - 4px)); }
+
+.tb-section { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: 0; }
+body.tb-left .tb-section, body.tb-right .tb-section { flex-direction: column; }
+.tb-apps { flex: 1; }
+body.tb-centered.tb-bottom .tb-apps, body.tb-centered.tb-top .tb-apps { justify-content: center; padding-left: 120px; }
+body.tb-centered.tb-left .tb-apps, body.tb-centered.tb-right .tb-apps { justify-content: center; padding-top: 60px; }
+.tb-items { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: 0; }
+body.tb-left .tb-items, body.tb-right .tb-items { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+.tb-items.drop-target { background: var(--accent-color-soft); border-radius: var(--radius); outline: 1px dashed var(--accent-color); }
+.tb-drop-marker { width: 3px; height: 32px; border-radius: 3px; background: var(--accent-color); box-shadow: 0 0 10px var(--accent-color); flex: none; }
+body.tb-left .tb-drop-marker, body.tb-right .tb-drop-marker { width: 32px; height: 3px; }
+
+.tb-btn {
+  position: relative; height: 42px; min-width: 42px; padding: 0 9px;
+  display: grid; place-items: center; border-radius: var(--radius);
+  transition: background var(--dur-fast), transform var(--dur-fast);
+  touch-action: none;
+}
+.tb-btn:hover { background: var(--surface-hover); }
+.tb-btn:active { transform: scale(0.92); background: var(--surface-active); }
+.tb-btn.active-flyout { background: var(--surface-3); }
+.tb-start svg { width: 24px; height: 24px; }
+.tb-start:hover svg { filter: drop-shadow(0 0 8px var(--accent-color)); }
+
+.tb-item .app-icon { width: 28px; height: 28px; border-radius: 8px; transition: transform var(--dur) var(--ease-spring); }
+.tb-item:hover .app-icon { transform: translateY(-2px) scale(1.06); }
+body.tb-top .tb-item:hover .app-icon { transform: translateY(2px) scale(1.06); }
+.tb-item.dragging { opacity: 0.3; }
+.tb-item::after {
+  content: ""; position: absolute; bottom: 2px; left: 50%; translate: -50% 0;
+  width: 0; height: 3px; border-radius: 3px; background: var(--text-3);
+  transition: width var(--dur) var(--ease), background var(--dur);
+}
+body.tb-top .tb-item::after { bottom: auto; top: 2px; }
+body.tb-left .tb-item::after { left: 2px; top: 50%; bottom: auto; translate: 0 -50%; width: 3px; height: 0; transition: height var(--dur) var(--ease); }
+body.tb-right .tb-item::after { left: auto; right: 2px; top: 50%; bottom: auto; translate: 0 -50%; width: 3px; height: 0; transition: height var(--dur) var(--ease); }
+.tb-item.running::after { width: 6px; }
+.tb-item.focused { background: var(--surface-3); }
+.tb-item.focused::after { width: 16px; background: var(--accent-color); }
+body.tb-left .tb-item.running::after, body.tb-right .tb-item.running::after { width: 3px; height: 6px; }
+body.tb-left .tb-item.focused::after, body.tb-right .tb-item.focused::after { width: 3px; height: 16px; }
+.tb-item.attention { animation: attention 1s ease 3; }
+@keyframes attention { 50% { background: color-mix(in srgb, var(--warning) 35%, transparent); } }
+.tb-count { position: absolute; top: 3px; right: 3px; min-width: 14px; height: 14px; font-size: 9px; line-height: 14px; border-radius: 7px; background: var(--accent-color); color: var(--accent-color-contrast); font-weight: 700; }
+
+.tb-tray { flex: none; }
+.tray-cluster { display: flex; gap: 8px; }
+.tray-cluster svg { width: 16px; height: 16px; }
+.tray-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; font-size: var(--fs-sm); padding: 0 10px; }
+.tray-clock #clock-date { color: var(--text-2); font-size: var(--fs-xs); }
+body.tb-left .tray-clock, body.tb-right .tray-clock { align-items: center; padding: 4px 0; font-size: var(--fs-xs); }
+body.tb-left .tray-clock #clock-date, body.tb-right .tray-clock #clock-date { display: none; }
+body.tb-left .tray-cluster, body.tb-right .tray-cluster { flex-direction: column; height: auto; padding: 8px 0; }
+.tb-show-desktop { width: 6px; height: 28px; border-left: 1px solid var(--border-strong); margin-left: 4px; }
+.tb-show-desktop:hover { background: var(--surface-hover); }
+body.tb-left .tb-show-desktop, body.tb-right .tb-show-desktop { width: 28px; height: 6px; border-left: 0; border-top: 1px solid var(--border-strong); margin: 4px 0 0; }
+
+/* Taskbar item hover preview */
+.tb-preview {
+  position: fixed; z-index: 6000; padding: 8px; border-radius: var(--radius);
+  background: var(--acrylic); backdrop-filter: blur(var(--system-glass-blur)); -webkit-backdrop-filter: blur(var(--system-glass-blur));
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  font-size: var(--fs-sm); pointer-events: none; animation: pop-in var(--dur) var(--ease);
+  white-space: nowrap;
+}

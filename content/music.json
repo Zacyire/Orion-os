@@ -1,0 +1,21 @@
+{
+  "_readme": "Spiceify library. 'tracks' play in the built-in player (<audio>): src must be a direct audio URL (mp3/ogg/aac/opus). Serve audio same-origin (e.g. static/media/music/) or with CORS headers to enable the visualizer. 'embeds' are streaming-service players (Spotify, SoundCloud, Apple Music, YouTube Music …) shown in an iframe. Sample tracks are test files from soundhelix.com — replace them with your licensed catalogue.",
+  "playlists": [
+    { "id": "all", "title": "All tracks", "description": "Everything in the library" }
+  ],
+  "tracks": [
+    { "id": "sh1", "title": "Song 1", "artist": "SoundHelix", "album": "Examples", "src": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", "colors": ["#1db954", "#0b3d24"] },
+    { "id": "sh2", "title": "Song 2", "artist": "SoundHelix", "album": "Examples", "src": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", "colors": ["#3a86ff", "#0b1e3d"] },
+    { "id": "sh3", "title": "Song 3", "artist": "SoundHelix", "album": "Examples", "src": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", "colors": ["#ff006e", "#3d0b1f"] },
+    { "id": "sh4", "title": "Song 4", "artist": "SoundHelix", "album": "Examples", "src": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3", "colors": ["#fb5607", "#3d1a0b"] },
+    { "id": "sh5", "title": "Song 5", "artist": "SoundHelix", "album": "Examples", "src": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3", "colors": ["#8338ec", "#1e0b3d"] },
+    { "id": "sh6", "title": "Song 6", "artist": "SoundHelix", "album": "Examples", "src": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3", "colors": ["#ffbe0b", "#3d300b"] }
+  ],
+  "embeds": [
+    {
+      "id": "spotify-top", "title": "Today's Top Hits", "provider": "Spotify",
+      "url": "https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M",
+      "height": 380
+    }
+  ]
+}

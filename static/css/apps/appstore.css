@@ -1,0 +1,30 @@
+/* App Store */
+.store-hero { position: relative; border-radius: var(--radius-lg); padding: 28px 30px; min-height: 190px; overflow: hidden; display: flex; align-items: center; gap: 28px; color: #fff; margin-bottom: 8px; }
+.store-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, var(--hero-a), var(--hero-b)); z-index: -2; }
+.store-hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 85% 20%, rgba(255,255,255,.35), transparent 40%); z-index: -1; }
+.store-hero { isolation: isolate; }
+.store-hero h2 { margin: 0 0 6px; font-size: 30px; }
+.store-hero p { margin: 0 0 16px; max-width: 460px; opacity: 0.9; }
+.store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.store-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); transition: transform var(--dur) var(--ease), background var(--dur-fast), box-shadow var(--dur); }
+.store-card:hover { transform: translateY(-3px); background: var(--surface-3); box-shadow: var(--shadow-sm); }
+.store-card.highlight { box-shadow: 0 0 0 2px var(--accent-color); }
+.store-card header { display: flex; gap: 12px; align-items: center; }
+.store-card h4 { margin: 0; font-size: var(--fs); }
+.store-card p { margin: 0; color: var(--text-2); font-size: var(--fs-sm); flex: 1; }
+.store-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: var(--fs-xs); color: var(--text-3); }
+.store-meta .stars { color: var(--warning); display: inline-flex; align-items: center; gap: 2px; }
+.store-meta .stars svg { width: 12px; height: 12px; }
+.store-actions { display: flex; gap: 6px; }
+.store-actions .btn { flex: 1; }
+.install-bar { height: 32px; border-radius: var(--radius-sm); background: var(--surface-3); overflow: hidden; position: relative; flex: 1; font-size: var(--fs-xs); display: grid; place-items: center; }
+.install-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--accent-color), var(--accent-color-2)); transition: width 120ms linear; }
+.install-bar span { position: relative; }
+.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: var(--fs-xs); background: var(--surface-3); color: var(--text-2); }
+.chip.accent { background: var(--accent-color-soft); color: var(--accent-color-strong); }
+.store-dialog-backdrop { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--scrim); animation: pop-in var(--dur) var(--ease); }
+.store-dialog { width: min(440px, calc(100% - 32px)); padding: 22px; border-radius: var(--radius-lg); display: grid; gap: 14px; background: var(--mica); }
+.store-dialog h2 { margin: 0; font-size: var(--fs-lg); }
+.store-dialog label { display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--text-2); }
+.store-dialog label.row { display: flex; align-items: center; gap: 12px; }
+.store-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }

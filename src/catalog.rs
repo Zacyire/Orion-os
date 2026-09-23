@@ -1,4 +1,4 @@
-//! The App Registry catalogue served to the AppStore.
+//! The App Registry catalogue.
 //!
 //! Single source of truth: `static/apps.json`, embedded at compile time and
 //! also served statically so the frontend can boot without the backend.
@@ -7,6 +7,7 @@
 use std::{collections::BTreeSet, sync::OnceLock};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CatalogApp {
@@ -18,12 +19,16 @@ pub struct CatalogApp {
     pub description: String,
     pub developer: String,
     pub version: String,
-    pub size_mb: f64,
-    pub rating: f64,
     /// System apps cannot be uninstalled.
     #[serde(default)]
     pub system: bool,
+    /// Internal hosts (e.g. the game player window) — not listed in Start or the store.
+    #[serde(default)]
+    pub hidden: bool,
     pub default_size: (u32, u32),
+    /// Optional embed descriptor `{ url, allow, sandbox, proxy }` for iframe apps.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub embed: Option<Value>,
 }
 
 const CATALOG_JSON: &str = include_str!("../static/apps.json");
@@ -38,10 +43,7 @@ pub fn find(id: &str) -> Option<&'static CatalogApp> {
 }
 
 pub fn default_installed() -> BTreeSet<String> {
-    ["explorer", "appstore", "settings", "notepad", "music", "movies", "games", "cloud", "terminal", "taskmgr"]
-        .into_iter()
-        .map(String::from)
-        .collect()
+    all().iter().map(|a| a.id.clone()).collect()
 }
 
 #[cfg(test)]
@@ -49,7 +51,7 @@ mod tests {
     #[test]
     fn catalog_parses_and_ids_are_unique() {
         let apps = super::all();
-        assert!(apps.len() >= 6);
+        assert!(apps.len() >= 8);
         let ids: std::collections::HashSet<_> = apps.iter().map(|a| &a.id).collect();
         assert_eq!(ids.len(), apps.len());
     }

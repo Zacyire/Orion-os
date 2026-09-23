@@ -1,13 +1,16 @@
-// REST + WebSocket client for the Rust backend.
-// When the backend is unreachable (e.g. opened from a static host) calls
-// reject and callers fall back to local behaviour; metrics are simulated.
+// REST + WebSocket client for the Rust API layer.
+//
+// Every request carries `X-LTF-Client`; the server rejects state-changing
+// requests without it (CSRF guard — see require_client_header in main.rs).
+// When the backend is unreachable (e.g. a static host) calls reject and
+// callers fall back to local behaviour.
 
 import { bus } from './events.js';
 
 export let online = true;
 
 async function request(method, path, body, { raw = false, headers = {} } = {}) {
-  const opts = { method, headers: { ...headers } };
+  const opts = { method, headers: { 'X-LTF-Client': '1', ...headers } };
   if (body instanceof FormData || typeof body === 'string' || body instanceof Blob) {
     opts.body = body;
   } else if (body !== undefined) {
@@ -27,7 +30,9 @@ async function request(method, path, body, { raw = false, headers = {} } = {}) {
     try {
       msg = (await res.json()).error || msg;
     } catch { /* not json */ }
-    throw new Error(msg);
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
   }
   if (raw) return res;
   const type = res.headers.get('content-type') || '';
@@ -41,6 +46,9 @@ function setOnline(v) {
   }
 }
 
+/** URL that loads `target` through the server-side content proxy. */
+export const proxyUrl = (target) => `/proxy?url=${encodeURIComponent(target)}`;
+
 export const api = {
   get: (p, o) => request('GET', p, undefined, o),
   post: (p, b, o) => request('POST', p, b, o),
@@ -48,7 +56,27 @@ export const api = {
   patch: (p, b, o) => request('PATCH', p, b, o),
   del: (p, o) => request('DELETE', p, undefined, o),
 
-  // convenience wrappers
+  /** Creator content catalogue (content/<kind>.json); empty when offline. */
+  async content(kind) {
+    try {
+      return await api.get(`/content/${kind}`);
+    } catch {
+      return { items: [] };
+    }
+  },
+
+  /** Round-trip latency to the API server in ms (median of `n` pings). */
+  async latency(n = 3) {
+    const samples = [];
+    for (let i = 0; i < n; i++) {
+      const t0 = performance.now();
+      await fetch('/api/ping', { cache: 'no-store' });
+      samples.push(performance.now() - t0);
+    }
+    samples.sort((a, b) => a - b);
+    return Math.round(samples[Math.floor(samples.length / 2)]);
+  },
+
   files: {
     list: () => api.get('/files'),
     read: (name) => api.get(`/files/${encodeURIComponent(name)}`),
@@ -64,20 +92,18 @@ export const api = {
 };
 
 // ─── WebSocket event stream ───────────────────────────────────────────────
-let ws;
 let retry = 1000;
-let simTimer;
 
 export function connectEvents() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  let ws;
   try {
     ws = new WebSocket(`${proto}://${location.host}/ws`);
   } catch {
-    return startSimulation();
+    return;
   }
   ws.addEventListener('open', () => {
     retry = 1000;
-    stopSimulation();
     setOnline(true);
   });
   ws.addEventListener('message', (e) => {
@@ -87,30 +113,8 @@ export function connectEvents() {
     } catch { /* ignore malformed */ }
   });
   ws.addEventListener('close', () => {
-    startSimulation();
+    setOnline(false);
     setTimeout(connectEvents, retry);
-    retry = Math.min(retry * 2, 15000);
+    retry = Math.min(retry * 2, 30000);
   });
-}
-
-// Local metrics simulation so widgets still animate without the backend.
-function startSimulation() {
-  if (simTimer) return;
-  const m = { cpu: 12, cores: Array(8).fill(10), ram_used_mb: 6000, ram_total_mb: 16384, gpu: 8, net_down_kbps: 400, net_up_kbps: 50, temp_c: 44, processes: 140 };
-  const walk = (v, s, lo, hi) => Math.min(hi, Math.max(lo, v + (Math.random() * 2 - 1) * s));
-  simTimer = setInterval(() => {
-    m.cores = m.cores.map((c) => (Math.random() < 0.03 ? 55 + Math.random() * 40 : walk(c, 9, 1, 100)));
-    m.cpu = m.cores.reduce((a, b) => a + b, 0) / m.cores.length;
-    m.ram_used_mb = walk(m.ram_used_mb, 180, 3500, 14500);
-    m.gpu = walk(m.gpu, 6, 1, 100);
-    m.net_down_kbps = walk(m.net_down_kbps, 350, 20, 9800);
-    m.net_up_kbps = walk(m.net_up_kbps, 60, 5, 2400);
-    m.temp_c = 38 + m.cpu * 0.42;
-    bus.emit('server:metrics', { ...m, cores: [...m.cores] });
-  }, 1000);
-}
-
-function stopSimulation() {
-  clearInterval(simTimer);
-  simTimer = null;
 }

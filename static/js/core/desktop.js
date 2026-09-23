@@ -156,20 +156,17 @@ export const desktop = {
   desktopMenu() {
     const tb = store.get('taskbar');
     return [
-      { label: 'View', icon: 'grid', submenu: [
-        { label: 'Show widgets', checked: !document.body.classList.contains('widgets-hidden'), action: () => bus.emit('widgets:toggle') },
-        { label: 'Animated wallpaper', checked: store.get('theme.animateWallpaper'), action: () => store.set('theme.animateWallpaper', !store.get('theme.animateWallpaper')) },
-      ] },
+      { label: 'Animate wallpaper', icon: 'sparkles', checked: store.get('theme.animateWallpaper'), action: () => store.set('theme.animateWallpaper', !store.get('theme.animateWallpaper')) },
       { label: 'Sort by name', icon: 'sort', action: () => this.sortByName() },
       { label: 'Refresh', icon: 'refresh', action: () => { root.style.opacity = 0.4; setTimeout(() => { root.style.opacity = ''; this.render(); }, 120); } },
       '-',
       { label: 'New text document', icon: 'file', action: () => this.newDocument() },
-      { label: 'Open in Terminal', icon: 'terminal', disabled: !registry.isInstalled('terminal'), action: () => wm.open('terminal') },
+      { label: 'Add web app…', icon: 'globe', action: () => wm.open('appstore', { addWebApp: true }) },
       '-',
       { label: 'Taskbar position', icon: 'taskbar', submenu: ['bottom', 'top', 'left', 'right'].map((p) => ({
         label: p[0].toUpperCase() + p.slice(1), checked: tb.position === p, action: () => taskbar.setPosition(p),
       })) },
-      { label: 'Personalize', icon: 'palette', action: () => wm.open('settings', { page: 'personalization' }) },
+      { label: 'Change wallpaper', icon: 'palette', action: () => wm.open('settings', { page: 'personalization' }) },
     ];
   },
 

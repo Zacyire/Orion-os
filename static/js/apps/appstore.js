@@ -1,19 +1,18 @@
 // App Store — browse, install, uninstall and launch apps from the registry.
 import { h, fill } from '../core/dom.js';
-import { icons, appIcon, tileColors } from '../core/icons.js';
+import { icons, appIcon } from '../core/icons.js';
 import { registry } from '../core/registry.js';
 import { taskbar } from '../core/taskbar.js';
 
 const CATS = [
   { id: 'home', label: 'Home', icon: 'store' },
+  { id: 'Entertainment', label: 'Entertainment', icon: 'play2' },
+  { id: 'Games', label: 'Games', icon: 'gamepad' },
+  { id: 'Internet', label: 'Internet', icon: 'globe' },
   { id: 'Productivity', label: 'Productivity', icon: 'notepad' },
-  { id: 'Entertainment', label: 'Entertainment', icon: 'movies' },
-  { id: 'Games', label: 'Games', icon: 'games' },
-  { id: 'Utilities', label: 'Utilities', icon: 'calculator' },
-  { id: 'Creativity', label: 'Creativity', icon: 'paint' },
-  { id: 'Developer', label: 'Developer', icon: 'code' },
+  { id: 'Web', label: 'Web apps', icon: 'tab' },
   { id: 'System', label: 'System', icon: 'settings' },
-  { id: 'library', label: 'Library', icon: 'grid' },
+  { id: 'library', label: 'Installed', icon: 'grid' },
 ];
 
 export default {
@@ -25,16 +24,15 @@ export default {
     let focusId = ctx.args.focus || null;
     const installing = new Map(); // id → progress 0..100
 
-    const search = h('input.field', { type: 'search', placeholder: 'Search apps, games…', style: { maxWidth: '360px' } });
+    const search = h('input.field', { type: 'search', placeholder: 'Search apps', style: { maxWidth: '360px' } });
     const nav = h('nav.app-sidebar');
     const main = h('div.app-main');
     root.append(h('div.app',
-      h('div.app-toolbar', h('b', { style: { padding: '0 8px' } }, 'App Store'), h('span.spacer'), search, h('span.spacer')),
+      h('div.app-toolbar', h('b', { style: { padding: '0 8px' } }, 'App Store'), h('span.spacer'), search, h('span.spacer'),
+        h('button.btn.primary', { onclick: () => addWebApp() }, h('span', { html: icons.plus }), 'Add web app')),
       h('div.app-row', nav, main),
     ));
     search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); draw(); });
-
-    const stars = (r) => h('span.stars', { html: icons.star }, r.toFixed(1));
 
     function actions(app) {
       if (installing.has(app.id)) {
@@ -46,7 +44,7 @@ export default {
       }
       return h('div.store-actions',
         h('button.btn.primary', { onclick: () => ctx.open(app.id) }, 'Open'),
-        app.system ? null : h('button.btn', { title: 'Uninstall', onclick: () => uninstall(app), html: icons.trash }),
+        app.system ? null : h('button.btn', { title: app.custom ? 'Remove' : 'Uninstall', onclick: () => uninstall(app), html: icons.trash }),
       );
     }
 
@@ -54,7 +52,7 @@ export default {
       return h(`article.store-card${focusId === app.id ? '.highlight' : ''}`, { dataset: { id: app.id } },
         h('header', appIcon(app, 'md'), h('div', h('h4', app.name), h('small.muted', app.developer))),
         h('p', app.description),
-        h('div.store-meta', stars(app.rating), h('span', app.category), h('span', `${app.size_mb} MB`), app.installed ? h('span.chip.accent', 'Installed') : null),
+        h('div.store-meta', h('span', app.category), h('span', app.custom ? 'Web app' : `v${app.version}`), app.installed ? h('span.chip.accent', 'Installed') : null),
         actions(app),
       );
     }
@@ -62,16 +60,15 @@ export default {
     async function install(app) {
       installing.set(app.id, 0);
       draw();
-      // Simulated download progress; the real install is a single API call.
-      const size = app.size_mb;
-      for (let p = 0; p < 100; p += Math.max(3, Math.round(40 / size + Math.random() * 12))) {
+      // Mounting is a single API call; a short progress animation gives feedback.
+      for (let p = 0; p < 100; p += 20) {
         installing.set(app.id, p);
         refreshCard(app.id);
-        await new Promise((r) => setTimeout(r, 90));
+        await new Promise((r) => setTimeout(r, 60));
       }
       try {
         await registry.install(app.id);
-        ctx.notify(`${app.name} installed`, 'Find it in Start or drag it to your taskbar.', { type: 'success' });
+        ctx.notify(`${app.name} installed`, 'Find it in Start, or drag it onto the taskbar or desktop.', { type: 'success' });
       } catch (e) {
         ctx.notify('Install failed', e.message, { type: 'error' });
       }
@@ -89,6 +86,38 @@ export default {
         ctx.notify('Uninstall failed', e.message, { type: 'error' });
       }
       draw();
+    }
+
+    function addWebApp() {
+      const name = h('input.field', { placeholder: 'e.g. Wikipedia', maxlength: 40, required: true });
+      const url = h('input.field', { type: 'url', placeholder: 'https://', required: true });
+      const color = h('input', { type: 'color', value: '#4c8dff', style: { width: '44px', height: '34px', border: 0, background: 'none' } });
+      const proxy = h('input', { type: 'checkbox' });
+      const dialog = h('div.store-dialog-backdrop',
+        h('form.store-dialog.glass',
+          h('h2', 'Add web app'),
+          h('label', h('span', 'Name'), name),
+          h('label', h('span', 'URL'), url),
+          h('label.row', h('span', 'Tile colour'), color),
+          h('label.row', h('span.toggle', proxy, h('i')), h('span', 'Load through the server proxy (for sites that block embedding)')),
+          h('div.store-dialog-actions',
+            h('button.btn', { type: 'button', onclick: () => dialog.remove() }, 'Cancel'),
+            h('button.btn.primary', { type: 'submit' }, 'Add app')),
+        ));
+      dialog.querySelector('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const app = await registry.addCustom({ name: name.value.trim(), url: url.value.trim(), color: color.value, proxy: proxy.checked });
+          dialog.remove();
+          ctx.notify(`${app.name} added`, 'Pinned to Start. Drag it to the taskbar or desktop.', { type: 'success' });
+          cat = 'Web';
+          draw();
+        } catch (err) {
+          ctx.notify('Could not add app', err.message, { type: 'error' });
+        }
+      });
+      root.querySelector('.app').append(dialog);
+      setTimeout(() => name.focus(), 30);
     }
 
     function refreshCard(id) {
@@ -111,8 +140,8 @@ export default {
       }
 
       if (cat === 'home') {
-        const featured = registry.get('cloud') || all[0];
-        const [a, b] = tileColors[featured.id] || ['#7c5cff', '#00d4ff'];
+        const featured = registry.get('geforcenow') || all[0];
+        const [a, b] = ['#1c3a05', '#0b1402'];
         const hero = h('section.store-hero', { style: { '--hero-a': a, '--hero-b': b } },
           appIcon(featured, 'xl'),
           h('div', h('small', { style: { textTransform: 'uppercase', letterSpacing: '.1em', opacity: 0.8 } }, 'Featured'),
@@ -120,14 +149,15 @@ export default {
         );
         hero.style.setProperty('--hero-a', a);
         hero.style.setProperty('--hero-b', b);
-        const top = [...all].sort((x, y) => y.rating - x.rating).slice(0, 4);
         const notInstalled = all.filter((x) => !x.installed);
+        const web = all.filter((x) => x.custom);
         fill(main,
           hero,
-          h('div.section-title', 'Top rated'), h('div.store-grid', top.map(card)),
-          notInstalled.length ? h('div.section-title', 'Discover') : null,
+          notInstalled.length ? h('div.section-title', 'Available to install') : null,
           notInstalled.length ? h('div.store-grid', notInstalled.map(card)) : null,
-          h('div.section-title', 'Everything'), h('div.store-grid', all.map(card)),
+          h('div.section-title', 'Apps'), h('div.store-grid', all.filter((x) => !x.custom).map(card)),
+          h('div.section-title', 'Your web apps'),
+          web.length ? h('div.store-grid', web.map(card)) : h('div.card.muted', 'Turn any website into a desktop app with “Add web app”. It opens in its own window and can be pinned to the taskbar.'),
         );
       } else if (cat === 'library') {
         const mine = all.filter((x) => x.installed);
@@ -144,8 +174,12 @@ export default {
 
     draw();
     const off = ctx.bus.on('registry:changed', () => { if (!installing.size) draw(); });
+    if (ctx.args.addWebApp) setTimeout(addWebApp, 50);
     return {
-      onArgs(a) { if (a.focus) { focusId = a.focus; cat = 'home'; draw(); } },
+      onArgs(a) {
+        if (a.focus) { focusId = a.focus; cat = 'home'; draw(); }
+        if (a.addWebApp) addWebApp();
+      },
       destroy: off,
     };
   },

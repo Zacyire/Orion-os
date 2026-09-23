@@ -1,0 +1,15 @@
+:root { --bg: #07080d; --fg: #e8eaf0; --muted: #8a8fa0; --accent: #4c8dff; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+header { display: flex; align-items: center; gap: 18px; height: 44px; padding: 0 16px; border-bottom: 1px solid #1a1d27; }
+header h2 { margin: 0; font-size: 15px; font-weight: 600; flex: 1; }
+header span { color: var(--muted); font-variant-numeric: tabular-nums; }
+header b { color: var(--fg); }
+main { position: relative; height: calc(100% - 44px - 28px); display: grid; place-items: center; }
+canvas { border-radius: 6px; box-shadow: 0 0 0 1px #1d2130, 0 20px 60px rgba(0,0,0,.6); outline: none; image-rendering: pixelated; }
+footer { height: 28px; text-align: center; color: var(--muted); font-size: 12px; }
+#overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; background: rgba(5,6,10,.72); backdrop-filter: blur(4px); text-align: center; }
+#overlay h1 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: .02em; }
+#overlay p { margin: 0 0 12px; color: var(--muted); max-width: 420px; }
+#overlay button { font: inherit; font-weight: 600; padding: 10px 28px; border-radius: 6px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
+#overlay button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

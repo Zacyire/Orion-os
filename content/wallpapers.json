@@ -1,0 +1,12 @@
+{
+  "_readme": "Live wallpapers. type 'video' plays muted and looped behind the desktop; src may be relative to static/ or an absolute URL (must allow cross-origin playback). Any .mp4/.webm/.mov dropped into static/media/wallpapers/ is picked up automatically (a same-named .jpg/.png/.webp becomes its poster). type 'image' shows a still image.",
+  "default": "aurora-ridge",
+  "items": [
+    {
+      "id": "aurora-ridge", "name": "Aurora Ridge", "type": "video",
+      "src": "media/wallpapers/aurora-ridge.webm",
+      "poster": "media/wallpapers/aurora-ridge.jpg",
+      "credits": "LTF OS (original, rendered with tools/wallpaper)"
+    }
+  ]
+}

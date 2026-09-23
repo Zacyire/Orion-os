@@ -2,11 +2,13 @@
 // load each one. Apps are ES modules in /js/apps/<module>.js exporting:
 //
 //   export default {
+//     single?: true,                                      // one window per app
 //     mount(body, ctx) { ...; return () => cleanup(); }  // required
-//     onFocus?(), onResize?()                             // optional hooks
 //   }
+//   mount may also return { destroy, onFocus, onResize, onArgs, beforeClose }.
 //
-// Adding a new app = add an entry to /apps.json + drop a module file.
+// Adding a new app = add an entry to /apps.json + drop a module file. Apps
+// that only wrap a URL can use module "embed" with an `embed` descriptor.
 
 import { api } from './api.js';
 import { bus } from './events.js';
@@ -23,8 +25,9 @@ export const registry = {
     } catch {
       // Offline: read the static catalogue and use locally tracked installs.
       const res = await fetch('apps.json');
-      const installed = new Set(local.get('installed', ['explorer', 'appstore', 'settings', 'notepad', 'music', 'movies', 'games', 'cloud', 'terminal', 'taskmgr']));
-      apps = (await res.json()).map((a) => ({ ...a, installed: a.system || installed.has(a.id) }));
+      const all = await res.json();
+      const installed = new Set(local.get('installed', all.map((a) => a.id)));
+      apps = all.map((a) => ({ ...a, installed: a.system || installed.has(a.id) }));
     }
     catalog = apps;
     byId.clear();
@@ -33,8 +36,9 @@ export const registry = {
     return apps;
   },
 
-  all: () => catalog,
-  installed: () => catalog.filter((a) => a.installed),
+  /** Everything the user can see (internal hosts such as the game player are hidden). */
+  all: () => catalog.filter((a) => !a.hidden),
+  installed: () => catalog.filter((a) => a.installed && !a.hidden),
   get: (id) => byId.get(id),
   isInstalled: (id) => !!byId.get(id)?.installed,
 
@@ -59,8 +63,20 @@ export const registry = {
       if (e instanceof TypeError) this._localToggle(id, false);
       else throw e;
     }
-    if (app) app.installed = false;
+    if (app?.custom) {
+      catalog = catalog.filter((a) => a.id !== id);
+      byId.delete(id);
+    } else if (app) app.installed = false;
     bus.emit('registry:changed', { id, installed: false });
+  },
+
+  /** Register any website as a desktop app (rendered by apps/embed.js). */
+  async addCustom({ name, url, color, proxy }) {
+    const app = await api.post('/apps/custom', { name, url, color, proxy });
+    catalog.push(app);
+    byId.set(app.id, app);
+    bus.emit('registry:changed', { id: app.id, installed: true });
+    return app;
   },
 
   _localToggle(id, on) {
@@ -81,7 +97,9 @@ export const registry = {
 // Keep in sync with installs made from other tabs / sessions.
 bus.on('server:app-installed', ({ id }) => {
   const a = byId.get(id);
-  if (a && !a.installed) {
+  if (!a) {
+    registry.load(); // a custom app added from another session
+  } else if (!a.installed) {
     a.installed = true;
     bus.emit('registry:changed', { id, installed: true });
   }

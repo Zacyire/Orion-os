@@ -9,19 +9,16 @@ import { api } from './api.js';
 import { bus } from './events.js';
 import { local } from './dom.js';
 
+// Mirrors default_prefs() in src/state.rs (used when the API is unreachable).
 const FALLBACK = {
-  theme: { mode: 'dark', accent: '#7c5cff', transparency: true, wallpaper: 'particles', animateWallpaper: true },
-  taskbar: { position: 'bottom', pinned: ['explorer', 'appstore', 'music', 'movies', 'notepad', 'settings'], autoHide: false, centered: true },
+  user: { name: 'User' },
+  theme: { mode: 'dark', accent: '#4c8dff', transparency: true, glassOpacity: 0.62, wallpaper: 'default', animateWallpaper: true },
+  taskbar: { position: 'bottom', pinned: ['orion', 'notnetflix', 'spiceify', 'youtube', 'vapor', 'geforcenow', 'appstore'], autoHide: false, centered: true },
   desktop: { shortcuts: [
-    { app: 'appstore', col: 0, row: 0 }, { app: 'notepad', col: 0, row: 1 }, { app: 'games', col: 0, row: 2 },
-    { app: 'cloud', col: 0, row: 3 }, { app: 'settings', col: 0, row: 4 },
+    { app: 'orion', col: 0, row: 0 }, { app: 'notnetflix', col: 0, row: 1 }, { app: 'spiceify', col: 0, row: 2 },
+    { app: 'youtube', col: 0, row: 3 }, { app: 'vapor', col: 0, row: 4 }, { app: 'geforcenow', col: 0, row: 5 },
+    { app: 'appstore', col: 1, row: 0 }, { app: 'notepad', col: 1, row: 1 }, { app: 'settings', col: 1, row: 2 },
   ] },
-  widgets: {
-    clock: { visible: true, x: null, y: null, style: 'digital' },
-    perf: { visible: true, x: null, y: null },
-    weather: { visible: true, x: null, y: null },
-    notes: { visible: false, x: null, y: null, text: '' },
-  },
   boot: { skipAnimation: false },
 };
 

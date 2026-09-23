@@ -1,0 +1,50 @@
+/* Orion browser */
+.orion { --or-bar: color-mix(in srgb, var(--surface-solid) 92%, black); background: var(--or-bar); }
+.or-tabbar { display: flex; align-items: flex-end; gap: 2px; height: 38px; padding: 6px 8px 0; background: color-mix(in srgb, var(--or-bar) 70%, black); }
+.or-tabs { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
+.or-tab { display: flex; align-items: center; gap: 8px; width: 220px; min-width: 64px; height: 32px; padding: 0 6px 0 12px; border-radius: 8px 8px 0 0; font-size: var(--fs-sm); color: var(--text-2); cursor: default; flex-shrink: 1; }
+.or-tab:hover { background: var(--surface-2); }
+.or-tab.active { background: var(--or-bar); color: var(--text); }
+.or-fav { width: 16px; height: 16px; flex: none; display: grid; place-items: center; }
+.or-fav svg { width: 14px; height: 14px; }
+.or-tab-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.or-tab-close { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; opacity: .6; }
+.or-tab-close:hover { opacity: 1; background: var(--surface-hover); }
+.or-tab-close svg { width: 10px; height: 10px; }
+.or-newtab { width: 30px; height: 30px; margin-bottom: 1px; border-radius: 8px; display: grid; place-items: center; }
+.or-newtab:hover { background: var(--surface-hover); }
+.or-newtab svg { width: 16px; height: 16px; }
+.or-toolbar { display: flex; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.or-nav { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--text-2); }
+.or-nav:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
+.or-nav:disabled { opacity: .35; cursor: default; }
+.or-nav svg { width: 17px; height: 17px; }
+.or-nav.on { color: var(--warning); }
+.or-nav.on svg { fill: currentColor; }
+.or-omnibox { flex: 1; display: flex; align-items: center; gap: 8px; height: 34px; margin: 0 6px; padding: 0 4px 0 12px; border-radius: 17px; background: var(--surface-3); border: 1px solid transparent; }
+.or-omnibox:focus-within { border-color: var(--accent-color); background: var(--surface-solid); }
+.or-lock { width: 15px; height: 15px; display: grid; place-items: center; color: var(--text-3); }
+.or-lock svg { width: 14px; height: 14px; }
+.or-lock[data-state="secure"] { color: var(--success); }
+.or-lock[data-state="proxy"] { color: var(--accent-color); }
+.or-address { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: var(--fs); }
+.or-mode { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 15px; font-size: var(--fs-xs); color: var(--text-2); border: 1px solid var(--border); }
+.or-mode svg { width: 13px; height: 13px; }
+.or-mode[data-mode="proxy"] { color: var(--accent-color-strong); border-color: var(--accent-color); background: var(--accent-color-soft); }
+.or-mode:hover { background: var(--surface-hover); }
+.or-content { position: relative; flex: 1; min-height: 0; }
+.or-page { position: absolute; inset: 0; display: flex; background: #fff; }
+.or-page > .ltf-frame { --frame-bg: #fff; }
+.or-dial { position: absolute; inset: 0; z-index: 3; overflow-y: auto; background: radial-gradient(900px 400px at 50% -10%, var(--accent-color-soft), transparent 70%), var(--surface-solid); color: var(--text); }
+.or-dial-inner { max-width: 720px; margin: 0 auto; padding: 12vh 24px 40px; display: grid; justify-items: center; gap: 24px; }
+.or-dial-logo { display: flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 600; letter-spacing: -.5px; }
+.or-dial-logo svg { width: 40px; height: 40px; color: var(--accent-color); }
+.or-dial form { width: 100%; }
+.or-dial-search { width: 100%; height: 48px; padding: 0 22px; border-radius: 24px; border: 1px solid var(--border-strong); background: var(--surface-2); outline: none; font-size: var(--fs-lg); }
+.or-dial-search:focus { border-color: var(--accent-color); box-shadow: 0 0 0 4px var(--accent-color-soft); }
+.or-dial-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; width: 100%; }
+.or-dial-item { display: grid; justify-items: center; gap: 8px; padding: 14px 6px; border-radius: var(--radius); font-size: var(--fs-sm); color: var(--text-2); }
+.or-dial-item:hover { background: var(--surface-hover); color: var(--text); }
+.or-dial-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--surface-3); display: grid; place-items: center; }
+.or-dial-icon img, .or-dial-icon svg { width: 24px; height: 24px; }
+.or-dial-note { max-width: 520px; text-align: center; color: var(--text-3); font-size: var(--fs-sm); margin: 0; }

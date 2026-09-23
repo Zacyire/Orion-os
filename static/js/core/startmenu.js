@@ -11,6 +11,8 @@ import { bus } from './events.js';
 import { api } from './api.js';
 import { taskbar } from './taskbar.js';
 import { power } from './power.js';
+import { store } from './store.js';
+import { avatar } from './user.js';
 
 let el;
 let btn;
@@ -48,12 +50,12 @@ export const startMenu = {
       );
       if (showAll) return;
       const recent = h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' } });
-      body.append(h('div.sm-heading', 'Recommended', h('small', 'from your LTF drive')), recent);
+      body.append(h('div.sm-heading', 'Recent documents', h('small', 'Notepad')), recent);
       try {
         const files = (await api.files.list()).slice(0, 6);
         recent.append(...files.map((f) => {
           const b = h('button.sm-list-item',
-            h('span', { html: icons.file, style: { width: '28px', color: 'var(--accent-2)' } }),
+            h('span', { html: icons.file, style: { width: '28px', color: 'var(--accent-color-2)' } }),
             h('div', f.name, h('small', timeAgo(f.modified))),
           );
           b.addEventListener('click', () => { flyouts.close(); wm.open('notepad', { file: f.name }); });
@@ -61,7 +63,7 @@ export const startMenu = {
         }));
         if (!files.length) recent.append(h('small', { style: { color: 'var(--text-3)', padding: '0 12px' } }, 'No documents yet.'));
       } catch {
-        recent.append(h('small', { style: { color: 'var(--text-3)', padding: '0 12px' } }, 'Kernel offline — files unavailable.'));
+        recent.append(h('small', { style: { color: 'var(--text-3)', padding: '0 12px' } }, 'Server offline — documents unavailable.'));
       }
     };
 
@@ -80,7 +82,7 @@ export const startMenu = {
     });
 
     const footer = h('div.sm-footer',
-      h('button.sm-user', h('img.sm-avatar', { src: 'assets/ninja-ltf.svg', alt: '' }), h('span', 'Ninja')),
+      h('button.sm-user', { onclick: () => { flyouts.close(); wm.open('settings', { page: 'account' }); } }, avatar(), h('span', store.get('user.name') || 'User')),
       h('button.icon-btn.sm-power', { html: icons.power, title: 'Power', onclick: (e) => {
         const r = e.currentTarget.getBoundingClientRect();
         contextMenu.open(r.left, r.top - 130, [

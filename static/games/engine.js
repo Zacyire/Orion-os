@@ -1,4 +1,4 @@
-// Lightweight canvas arcade games shared by Arcade and FadeNOW.
+// Canvas game engines for the bundled Vapor titles (static/games/*.html).
 // Each game: new Game(canvas, { onScore, onOver }) → start() / pause() / resume() / destroy()
 
 const COLORS = ['#00f0ff', '#7c5cff', '#ff3cac', '#ffd319', '#3ddc97', '#ff7a18', '#1793d1'];
@@ -82,8 +82,8 @@ class BaseGame {
 
 // ─── Snake ────────────────────────────────────────────────────────────────
 export class Snake extends BaseGame {
-  static title = 'Neon Snake';
-  static help = 'Arrow keys / WASD to steer. Eat the orbs, don’t bite yourself.';
+  static title = 'Snake';
+  static help = 'Arrow keys / WASD to steer. Eat to grow; avoid your own tail.';
   cols = 28;
   rows = 20;
   cell = 22;
@@ -163,7 +163,7 @@ const SHAPES = [
 ];
 
 export class Blocks extends BaseGame {
-  static title = 'Fade Blocks';
+  static title = 'Blocks';
   static help = '←/→ move · ↑ rotate · ↓ soft drop · Space hard drop.';
   cols = 10;
   rows = 20;
@@ -289,8 +289,8 @@ export class Blocks extends BaseGame {
 
 // ─── Pong ─────────────────────────────────────────────────────────────────
 export class Pong extends BaseGame {
-  static title = 'Taper Pong';
-  static help = 'W/S or ↑/↓ to move. First to 7 wins. Beat the CPU!';
+  static title = 'Pong';
+  static help = 'W/S or ↑/↓ to move. First to 7 points wins.';
 
   constructor(canvas, hooks) {
     super(canvas, hooks);

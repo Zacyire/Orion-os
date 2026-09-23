@@ -1,6 +1,7 @@
 // Lock / restart / shut down.
 import { h, $ } from './dom.js';
 import { store } from './store.js';
+import { avatar } from './user.js';
 
 export const power = {
   lock() {
@@ -15,7 +16,7 @@ export const power = {
     const timer = setInterval(tick, 1000);
     const screen = h('section#lock-screen', { tabindex: 0 },
       time, date,
-      h('div.lock-user', h('img', { src: 'assets/ninja-ltf.svg', alt: '' }), h('b', 'Ninja'), h('small', 'Click or press any key to unlock')),
+      h('div.lock-user', avatar(), h('b', store.get('user.name') || 'User'), h('small', 'Click or press any key to unlock')),
     );
     const unlock = () => {
       screen.classList.add('unlocking');
@@ -37,7 +38,7 @@ export const power = {
   async shutdown() {
     await this._powerScreen('Shutting down…');
     const scr = $('#power-screen');
-    $('#power-text').textContent = 'It is now safe to close this tab.';
+    $('#power-text').textContent = 'Session ended. You can close this tab.';
     scr.querySelector('.power-spinner').hidden = true;
     const btn = h('button.btn.primary', { onclick: () => location.reload() }, 'Power on');
     scr.append(btn);

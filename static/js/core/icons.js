@@ -6,21 +6,25 @@ const f = (body) => `<svg viewBox="0 0 24 24" fill="currentColor">${body}</svg>`
 
 export const icons = {
   // ── brand ──
-  logo: `<svg viewBox="0 0 24 24"><defs><linearGradient id="lg-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient></defs><rect x="2" y="2" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)"/><rect x="12.7" y="2" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)" opacity=".85"/><rect x="2" y="12.7" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)" opacity=".7"/><rect x="12.7" y="12.7" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)" opacity=".55"/></svg>`,
+  logo: `<svg viewBox="0 0 24 24"><defs><linearGradient id="lg-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent-color)"/><stop offset="1" stop-color="var(--accent-color-2)"/></linearGradient></defs><rect x="2" y="2" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)"/><rect x="12.7" y="2" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)" opacity=".85"/><rect x="2" y="12.7" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)" opacity=".7"/><rect x="12.7" y="12.7" width="9.3" height="9.3" rx="2" fill="url(#lg-logo)" opacity=".55"/></svg>`,
 
   // ── app glyphs ──
   folder: s('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
   store: s('<path d="M4 8h16l-1 12H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>'),
   settings: s('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
   notepad: s('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>'),
+
+  globe: s('<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>'),
+  play2: s('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor"/>'),
+  gamepad2: s('<path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><path d="M17.3 5H6.7a4 4 0 0 0-4 3.6L2 15.4A2.6 2.6 0 0 0 4.6 18c.8 0 1.5-.4 2-1l1.6-2h7.6l1.6 2c.5.6 1.2 1 2 1a2.6 2.6 0 0 0 2.6-2.6l-.7-6.8a4 4 0 0 0-4-3.6z"/>'),
   music: s('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'),
-  movies: s('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor"/>'),
-  games: s('<path d="M6 11h4M8 9v4M15 12h.01M18 10h.01"/><path d="M17.3 5H6.7a4 4 0 0 0-4 3.6L2 15.4A2.6 2.6 0 0 0 4.6 18c.8 0 1.5-.4 2-1l1.6-2h7.6l1.6 2c.5.6 1.2 1 2 1a2.6 2.6 0 0 0 2.6-2.6l-.7-6.8a4 4 0 0 0-4-3.6z"/>'),
-  cloud: s('<path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 1 0 6 16.3"/><path d="M10 13l4 3-4 3z" fill="currentColor"/>'),
-  terminal: s('<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 9l3 3-3 3M12 15h6"/>'),
-  chart: s('<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'),
-  calculator: s('<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h.01M16 19h.01"/>'),
-  paint: s('<path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9 12.5c-2 0-4 1.5-4 4 0 1.5-1 2.5-2 3 3 1 7 0 8-2.5.5-1.4.2-2.7-.5-3.6"/>'),
+  heart: s('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>'),
+  home: s('<path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'),
+  library: s('<path d="M4 4v16M9 4v16M14 4l6 16"/>'),
+  external: s('<path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'),
+  shield: s('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'),
+  tab: s('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/>'),
+  star2: s('<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>'),
 
   // ── UI ──
   search: s('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),
@@ -101,32 +105,104 @@ export const icons = {
 };
 
 /**
+ * Full-tile artwork for first-party apps (64×64). `__ID__` is replaced with a
+ * per-instance suffix so gradient/filter references never collide.
+ */
+export const tileArt = {
+  notnetflix: `<svg viewBox="0 0 64 64"><defs>
+    <linearGradient id="nf-a__ID__" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b20710"/><stop offset="1" stop-color="#7a040a"/></linearGradient>
+    <linearGradient id="nf-b__ID__" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff1a24"/><stop offset="1" stop-color="#d10812"/></linearGradient>
+    <filter id="nf-s__ID__" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="0" stdDeviation="1.6" flood-color="#000" flood-opacity=".7"/></filter></defs>
+    <rect width="64" height="64" rx="14" fill="#0b0b0b"/>
+    <path d="M21 11h8.5v42.5L21 51z" fill="url(#nf-a__ID__)"/>
+    <path d="M34.5 11H43v40l-8.5 2.5z" fill="url(#nf-a__ID__)"/>
+    <path d="M21 11h8.5L43 51l-8.5 2.5z" fill="url(#nf-b__ID__)" filter="url(#nf-s__ID__)"/></svg>`,
+
+  spiceify: `<svg viewBox="0 0 64 64"><defs>
+    <radialGradient id="sp-g__ID__" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2cf07a"/><stop offset="1" stop-color="#17b350"/></radialGradient></defs>
+    <rect width="64" height="64" rx="14" fill="#121212"/>
+    <circle cx="32" cy="32" r="23" fill="url(#sp-g__ID__)"/>
+    <g fill="#0b0b0b"><rect x="19" y="28" width="4" height="8" rx="2"/><rect x="25" y="22" width="4" height="20" rx="2"/><rect x="31" y="17" width="4" height="30" rx="2"/><rect x="37" y="23" width="4" height="18" rx="2"/><rect x="43" y="28.5" width="4" height="7" rx="2"/></g></svg>`,
+
+  geforcenow: `<svg viewBox="0 0 64 64"><defs>
+    <radialGradient id="gf-bg__ID__" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#1a2410"/><stop offset="1" stop-color="#070906"/></radialGradient>
+    <linearGradient id="gf-g__ID__" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b6ff3b"/><stop offset="1" stop-color="#5a9a00"/></linearGradient>
+    <filter id="gf-glow__ID__" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <rect width="64" height="64" rx="14" fill="url(#gf-bg__ID__)"/>
+    <g filter="url(#gf-glow__ID__)">
+      <path d="M32 9l19.5 11.25v23.5L32 55 12.5 43.75v-23.5z" fill="none" stroke="url(#gf-g__ID__)" stroke-width="3" stroke-linejoin="round"/>
+      <g fill="url(#gf-g__ID__)">
+        <path id="gf-blade__ID__" d="M32 32c-1-6 2.5-11.5 9-13.2-3.8 2.8-5.6 6.7-5.3 11.5z"/>
+        <use href="#gf-blade__ID__" transform="rotate(120 32 32)"/>
+        <use href="#gf-blade__ID__" transform="rotate(240 32 32)"/>
+      </g>
+      <circle cx="32" cy="32" r="3" fill="#d9ff9e"/>
+    </g></svg>`,
+
+  vapor: `<svg viewBox="0 0 64 64"><defs>
+    <filter id="vp-brush__ID__" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feComposite in="d" in2="n" operator="out" result="gaps"/>
+      <feMerge><feMergeNode in="d"/></feMerge></filter></defs>
+    <rect width="64" height="64" rx="14" fill="#0a0a0a"/>
+    <g fill="none" stroke="#f4f4f4" stroke-linecap="round" stroke-width="5.5" filter="url(#vp-brush__ID__)">
+      <path d="M20 52c-5-7 5-11 0-18s5-11 1-19"/>
+      <path d="M32 54c-5-8 6-12 0-20s5-12 1-22"/>
+      <path d="M44 52c-5-7 5-11 0-18s5-11 1-19"/>
+    </g></svg>`,
+
+  youtube: `<svg viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="14" fill="#0f0f0f"/>
+    <rect x="8" y="15" width="48" height="34" rx="10" fill="#ff0000"/>
+    <path d="M27 24.5v15l13-7.5z" fill="#fff"/></svg>`,
+
+  orion: `<svg viewBox="0 0 64 64"><defs>
+    <radialGradient id="or-bg__ID__" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="#0f2356"/><stop offset="1" stop-color="#050a1c"/></radialGradient>
+    <radialGradient id="or-g__ID__" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#8fe3ff"/><stop offset=".45" stop-color="#2f8cff"/><stop offset="1" stop-color="#1231a8"/></radialGradient>
+    <filter id="or-glow__ID__" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+    <rect width="64" height="64" rx="14" fill="url(#or-bg__ID__)"/>
+    <circle cx="32" cy="32" r="18" fill="#2f8cff" opacity=".55" filter="url(#or-glow__ID__)"/>
+    <circle cx="32" cy="32" r="16" fill="url(#or-g__ID__)"/>
+    <g fill="none" stroke="#bfefff" stroke-opacity=".55" stroke-width="1.2">
+      <ellipse cx="32" cy="32" rx="7" ry="16"/><path d="M16 32h32M18.5 24h27M18.5 40h27"/></g>
+    <ellipse cx="32" cy="32" rx="26" ry="8" fill="none" stroke="#9fdcff" stroke-width="1.6" transform="rotate(-22 32 32)" opacity=".9"/>
+    <circle cx="54" cy="23" r="2.2" fill="#fff"/><circle cx="12" cy="14" r="1" fill="#fff" opacity=".8"/><circle cx="50" cy="52" r=".9" fill="#fff" opacity=".7"/></svg>`,
+};
+
+let artSeq = 0;
+
+/**
  * Colour pairs for app tiles so each app gets a distinctive gradient.
  */
 export const tileColors = {
-  explorer: ['#ffb347', '#ffcc33'],
-  appstore: ['#7c5cff', '#00d4ff'],
-  settings: ['#6a7a93', '#3b4658'],
-  notepad: ['#43e97b', '#38b2ac'],
-  music: ['#ff3cac', '#784ba0'],
-  movies: ['#ff512f', '#dd2476'],
-  games: ['#f7971e', '#e44d26'],
-  cloud: ['#76b900', '#2f6f00'],
-  terminal: ['#232526', '#414345'],
-  taskmgr: ['#2193b0', '#6dd5ed'],
-  calculator: ['#4e54c8', '#8f94fb'],
-  paint: ['#fc466b', '#3f5efb'],
+  appstore: ['#2f7bff', '#00c6ff'],
+  settings: ['#5f6b80', '#343c4b'],
+  notepad: ['#2fbf8f', '#1a8a78'],
 };
 
 /** Build an app tile element (`<div class="app-icon">`). */
 export function appIcon(app, size = '') {
   const el = document.createElement('div');
   el.className = `app-icon ${size}`.trim();
-  const [a, b] = tileColors[app.id] || ['#7c5cff', '#00d4ff'];
+  const art = tileArt[app.icon];
+  if (art) {
+    el.classList.add('art');
+    el.innerHTML = art.replaceAll('__ID__', `-${++artSeq}`);
+    return el;
+  }
+  const [a, b] = app.color ? [app.color, shade(app.color)] : tileColors[app.id] || ['#3b4252', '#232834'];
   el.style.setProperty('--tile-a', a);
   el.style.setProperty('--tile-b', b);
-  el.innerHTML = icons[app.icon] || icons.grid;
+  el.innerHTML = icons[app.icon === 'web' ? 'globe' : app.icon] || icons.grid;
   return el;
+}
+
+/** Darken a #rrggbb colour for the second gradient stop. */
+function shade(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.round(v * 0.55).toString(16).padStart(2, '0');
+  return `#${f((n >> 16) & 255)}${f((n >> 8) & 255)}${f(n & 255)}`;
 }
 
 export const icon = (name) => icons[name] || '';

@@ -1,19 +1,97 @@
 [
   {
-    "id": "explorer",
-    "name": "Files",
-    "module": "explorer",
-    "icon": "folder",
-    "category": "System",
-    "description": "Browse documents stored on your LTF OS drive.",
-    "developer": "LTF Systems",
+    "id": "orion",
+    "name": "Orion",
+    "module": "orion",
+    "icon": "orion",
+    "category": "Internet",
+    "description": "Web browser with tabs, history and an optional server-side proxy for sites that refuse to be framed.",
+    "developer": "LTF",
     "version": "1.0.0",
-    "size_mb": 2.1,
-    "rating": 4.4,
-    "system": true,
+    "system": false,
     "default_size": [
-      860,
-      540
+      1180,
+      740
+    ]
+  },
+  {
+    "id": "notnetflix",
+    "name": "NotNetflix",
+    "module": "notnetflix",
+    "icon": "notnetflix",
+    "category": "Entertainment",
+    "description": "Movie and series streaming front-end. Titles are defined in content/movies.json (direct video files or embed URLs).",
+    "developer": "LTF",
+    "version": "1.0.0",
+    "system": false,
+    "default_size": [
+      1180,
+      720
+    ]
+  },
+  {
+    "id": "spiceify",
+    "name": "Spiceify",
+    "module": "spiceify",
+    "icon": "spiceify",
+    "category": "Entertainment",
+    "description": "Music player for audio files and streaming-service embeds. Library defined in content/music.json.",
+    "developer": "LTF",
+    "version": "1.0.0",
+    "system": false,
+    "default_size": [
+      1080,
+      680
+    ]
+  },
+  {
+    "id": "geforcenow",
+    "name": "GeForce NOW",
+    "module": "geforcenow",
+    "icon": "geforcenow",
+    "category": "Games",
+    "description": "Cloud gaming frame with gamepad, fullscreen and pointer-lock permissions and a live connection monitor.",
+    "developer": "LTF",
+    "version": "1.0.0",
+    "system": false,
+    "default_size": [
+      1280,
+      760
+    ],
+    "embed": {
+      "url": "https://play.geforcenow.com/",
+      "allow": "autoplay; fullscreen; gamepad; keyboard-map; clipboard-read; clipboard-write; microphone; camera",
+      "proxy": false
+    }
+  },
+  {
+    "id": "vapor",
+    "name": "Vapor",
+    "module": "vapor",
+    "icon": "vapor",
+    "category": "Games",
+    "description": "Game store and library. Launches HTML5 and web-hosted games in their own windows. Catalogue in content/games.json.",
+    "developer": "LTF",
+    "version": "1.0.0",
+    "system": false,
+    "default_size": [
+      1180,
+      720
+    ]
+  },
+  {
+    "id": "youtube",
+    "name": "YouTube",
+    "module": "youtube",
+    "icon": "youtube",
+    "category": "Entertainment",
+    "description": "Video browser using the official YouTube embed player. Search requires a YOUTUBE_API_KEY on the server.",
+    "developer": "LTF",
+    "version": "1.0.0",
+    "system": false,
+    "default_size": [
+      1180,
+      720
     ]
   },
   {
@@ -22,32 +100,13 @@
     "module": "appstore",
     "icon": "store",
     "category": "System",
-    "description": "Discover, install and manage apps for LTF OS.",
-    "developer": "LTF Systems",
+    "description": "Install, remove and launch apps, or add any website as a desktop app.",
+    "developer": "LTF",
     "version": "1.0.0",
-    "size_mb": 4.0,
-    "rating": 4.7,
     "system": true,
     "default_size": [
-      980,
-      640
-    ]
-  },
-  {
-    "id": "settings",
-    "name": "Settings",
-    "module": "settings",
-    "icon": "settings",
-    "category": "System",
-    "description": "Personalize your taskbar, wallpaper, accent colors and widgets.",
-    "developer": "LTF Systems",
-    "version": "1.0.0",
-    "size_mb": 3.2,
-    "rating": 4.5,
-    "system": true,
-    "default_size": [
-      900,
-      600
+      1040,
+      660
     ]
   },
   {
@@ -56,151 +115,44 @@
     "module": "notepad",
     "icon": "notepad",
     "category": "Productivity",
-    "description": "Plain text & Markdown editor with live preview, cloud save, upload and download.",
-    "developer": "LTF Systems",
-    "version": "2.1.0",
-    "size_mb": 1.4,
-    "rating": 4.6,
+    "description": "Text and Markdown editor with server-side storage, upload and download.",
+    "developer": "LTF",
+    "version": "1.0.0",
     "system": false,
     "default_size": [
-      820,
-      560
-    ]
-  },
-  {
-    "id": "music",
-    "name": "Groove",
-    "module": "music",
-    "icon": "music",
-    "category": "Entertainment",
-    "description": "Synthwave music player with a real-time canvas audio visualizer.",
-    "developer": "Taper Audio",
-    "version": "3.0.2",
-    "size_mb": 12.8,
-    "rating": 4.8,
-    "system": false,
-    "default_size": [
-      900,
+      860,
       580
     ]
   },
   {
-    "id": "movies",
-    "name": "Cinema",
-    "module": "movies",
-    "icon": "movies",
-    "category": "Entertainment",
-    "description": "Modern video player with playlists, speed control and picture-in-picture.",
-    "developer": "Taper Studios",
-    "version": "1.4.0",
-    "size_mb": 18.5,
-    "rating": 4.5,
-    "system": false,
-    "default_size": [
-      1000,
-      620
-    ]
-  },
-  {
-    "id": "games",
-    "name": "Arcade",
-    "module": "games",
-    "icon": "games",
-    "category": "Games",
-    "description": "Retro arcade hub: Snake, Tetris-style Blocks and Pong.",
-    "developer": "Fade Games",
-    "version": "1.2.0",
-    "size_mb": 6.3,
-    "rating": 4.9,
-    "system": false,
-    "default_size": [
-      860,
-      620
-    ]
-  },
-  {
-    "id": "cloud",
-    "name": "FadeNOW",
-    "module": "cloudgaming",
-    "icon": "cloud",
-    "category": "Games",
-    "description": "Cloud gaming portal. Stream AAA titles with ultra-low latency rigs.",
-    "developer": "FadeNOW Inc.",
-    "version": "2.0.0",
-    "size_mb": 22.0,
-    "rating": 4.3,
-    "system": false,
-    "default_size": [
-      1100,
-      680
-    ]
-  },
-  {
-    "id": "terminal",
-    "name": "Terminal",
-    "module": "terminal",
-    "icon": "terminal",
-    "category": "Developer",
-    "description": "A tiny shell for LTF OS with neofetch, ls, cat and more.",
-    "developer": "LTF Systems",
-    "version": "0.9.0",
-    "size_mb": 0.8,
-    "rating": 4.7,
-    "system": false,
-    "default_size": [
-      760,
-      460
-    ]
-  },
-  {
-    "id": "taskmgr",
-    "name": "Task Manager",
-    "module": "taskmgr",
-    "icon": "chart",
-    "category": "Utilities",
-    "description": "Live CPU, memory, GPU and network graphs streamed from the kernel.",
-    "developer": "LTF Systems",
-    "version": "1.1.0",
-    "size_mb": 1.1,
-    "rating": 4.4,
-    "system": false,
-    "default_size": [
-      760,
-      520
-    ]
-  },
-  {
-    "id": "calculator",
-    "name": "Calculator",
-    "module": "calculator",
-    "icon": "calculator",
-    "category": "Utilities",
-    "description": "A clean calculator with keyboard support and history.",
-    "developer": "LTF Systems",
-    "version": "1.0.3",
-    "size_mb": 0.4,
-    "rating": 4.2,
-    "system": false,
-    "default_size": [
-      340,
-      520
-    ]
-  },
-  {
-    "id": "paint",
-    "name": "Sketch",
-    "module": "paint",
-    "icon": "paint",
-    "category": "Creativity",
-    "description": "Doodle on a canvas with brushes, colors and PNG export.",
-    "developer": "Fade Games",
+    "id": "settings",
+    "name": "Settings",
+    "module": "settings",
+    "icon": "settings",
+    "category": "System",
+    "description": "Personalization, wallpaper, taskbar position, accounts and system information.",
+    "developer": "LTF",
     "version": "1.0.0",
-    "size_mb": 0.9,
-    "rating": 4.1,
-    "system": false,
+    "system": true,
     "default_size": [
-      880,
-      600
+      920,
+      620
+    ]
+  },
+  {
+    "id": "webplayer",
+    "name": "Vapor Player",
+    "module": "embed",
+    "icon": "vapor",
+    "category": "Games",
+    "description": "Window host for games launched from Vapor.",
+    "developer": "LTF",
+    "version": "1.0.0",
+    "system": true,
+    "hidden": true,
+    "default_size": [
+      900,
+      640
     ]
   }
 ]

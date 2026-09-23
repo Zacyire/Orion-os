@@ -11,6 +11,10 @@ pub enum ApiError {
     NotFound(String),
     BadRequest(String),
     Internal(String),
+    /// Feature not configured on this server.
+    Unavailable(String),
+    /// An external service failed.
+    Upstream(String),
 }
 
 impl IntoResponse for ApiError {
@@ -18,6 +22,8 @@ impl IntoResponse for ApiError {
         let (status, msg) = match self {
             ApiError::NotFound(m) => (StatusCode::NOT_FOUND, m),
             ApiError::BadRequest(m) => (StatusCode::BAD_REQUEST, m),
+            ApiError::Unavailable(m) => (StatusCode::SERVICE_UNAVAILABLE, m),
+            ApiError::Upstream(m) => (StatusCode::BAD_GATEWAY, m),
             ApiError::Internal(m) => {
                 tracing::error!("internal error: {m}");
                 (StatusCode::INTERNAL_SERVER_ERROR, m)

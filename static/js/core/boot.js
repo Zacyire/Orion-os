@@ -1,23 +1,27 @@
-// Arch Linux–style boot sequence with the Ninja Low Taper Fade spinner.
+// Arch Linux–style boot console (kernel + systemd unit output).
 // Resolves once both the log animation and the real init work are done.
 
 import { $, escapeHtml, local } from './dom.js';
 
 const PRELUDE = [
-  ['arch', 'LTF OS Boot Manager (systemd-boot 256.7-1-ltf)'],
-  ['dim', '  Booting `LTF OS (linux-ltf)`'],
-  ['', ':: Loading Linux linux-ltf ...'],
+  ['arch', 'LTF OS Boot Manager'],
+  ['dim', '  Loading LTF OS (linux)'],
+  ['', ':: Loading Linux linux ...'],
   ['', ':: Loading initial ramdisk ...'],
-  ['', '[    0.000000] Linux version 6.9.7-ltf1-1 (ninja@taper) (rustc 1.94.1) #1 SMP PREEMPT_DYNAMIC'],
-  ['', '[    0.000000] Command line: initrd=\\initramfs-linux-ltf.img root=/dev/ltf0 rw quiet fade=low taper=1'],
+  ['', '[    0.000000] Linux version 6.10.10-arch1-1 (linux@archlinux) (gcc (GCC) 14.2.1, GNU ld 2.43) #1 SMP PREEMPT_DYNAMIC'],
+  ['', '[    0.000000] Command line: initrd=\\initramfs-linux.img root=UUID=5c1f7c2e-3b7e-4d2a-9f4e-2a1d6c0b8e11 rw quiet splash'],
   ['dim', '[    0.004211] x86/fpu: Supporting XSAVE feature 0x001: \'x87 floating point registers\''],
   ['dim', '[    0.093310] ACPI: Early table checksum verification disabled'],
-  ['', 'starting version 256.7-1-ltf'],
+  ['dim', '[    0.412806] PCI: Using configuration type 1 for base access'],
+  ['dim', '[    1.022417] nvme nvme0: 16/0/0 default/read/poll queues'],
   ['', ':: running early hook [udev]'],
+  ['', 'Starting systemd-udevd version 256.7-1-arch'],
   ['', ':: running hook [udev]'],
   ['', ':: Triggering uevents...'],
   ['', ':: running hook [keymap]'],
-  ['', '/dev/ltf0: clean, 482311/30531584 files, 9187723/122096646 blocks'],
+  ['', ':: performing fsck on \'/dev/nvme0n1p2\''],
+  ['', '/dev/nvme0n1p2: clean, 482311/30531584 files, 9187723/122096646 blocks'],
+  ['', ':: mounting \'/dev/nvme0n1p2\' on real root'],
   ['', ''],
   ['', 'Welcome to <b class="arch">LTF OS</b>!'],
   ['', ''],
@@ -25,21 +29,14 @@ const PRELUDE = [
 
 const FALLBACK_UNITS = [
   ['ok', 'Reached target Local File Systems.'],
-  ['ok', 'Started LTF OS Kernel.'],
   ['ok', 'Reached target System Initialization.'],
-  ['ok', 'Started Compositor (Mica/Acrylic backend).'],
-  ['warn', 'Kernel API unreachable — continuing in offline mode.'],
-  ['ok', 'Loaded App Registry.'],
-  ['ok', 'Started Ninja Hairline Service.'],
+  ['ok', 'Reached target Basic System.'],
+  ['fail', 'Failed to start LTF API Server (connection refused).'],
+  ['warn', 'Continuing in offline mode; preferences are stored locally.'],
+  ['ok', 'Loaded Application Registry.'],
+  ['ok', 'Started Display Compositor.'],
   ['ok', 'Reached target Graphical Interface.'],
 ];
-
-const BANNER = String.raw`
-   _    _____ _____    ___  ____
-  | |  |_   _|  ___|  / _ \/ ___|
-  | |    | | | |_    | | | \___ \
-  | |___ | | |  _|   | |_| |___) |
-  |_____||_| |_|      \___/|____/   low taper fade edition`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -66,11 +63,12 @@ export async function runBoot(work) {
   const lines = [];
   const cursor = '<span class="cursor"></span>';
   const render = () => {
-    log.innerHTML = lines.slice(-60).join('\n') + '\n' + cursor;
+    log.innerHTML = lines.slice(-60).join('') + `<div>${cursor}</div>`;
   };
   const push = (cls, text, html = false) => {
     const body = html ? text : escapeHtml(text);
-    lines.push(cls ? `<span class="${cls}">${body}</span>` : body);
+    // One block per line: #boot-log is a flex column anchored to the bottom.
+    lines.push(`<div${cls ? ` class="${cls}"` : ''}>${body || '&nbsp;'}</div>`);
     render();
   };
   const tag = (s) => (s === 'ok' ? '[  <span class="ok">OK</span>  ]' : s === 'warn' ? '[ <span class="warn">WARN</span> ]' : '[<span class="fail">FAILED</span>]');
@@ -94,9 +92,12 @@ export async function runBoot(work) {
   const list = units ? units.map((u) => [u.status, u.msg]) : FALLBACK_UNITS;
   for (let i = 0; i < list.length; i++) {
     const [s, msg] = list[i];
-    if (s === 'ok' && i % 3 === 0 && !skipped) {
-      push('', `         Starting ${msg.replace(/^(Started|Reached target|Loaded|Mounted|Listening on) /, '').replace(/\.$/, '')}...`);
-      await sleep(70 + Math.random() * 90);
+    // systemd prints the in-progress line first: Starting X... → Started/Finished X,
+    // Mounting X... → Mounted X.
+    const m = msg.match(/^(Started|Finished|Mounted) (.*)\.$/);
+    if (m && !skipped) {
+      push('', `         ${m[1] === 'Mounted' ? 'Mounting' : 'Starting'} ${m[2]}...`);
+      await sleep(40 + Math.random() * 60);
     }
     push('', `${tag(s)} ${escapeHtml(msg)}`, true);
     progress(30 + (i / list.length) * 60, msg.toLowerCase().replace(/\.$/, ''));
@@ -117,10 +118,12 @@ export async function runBoot(work) {
     push('', `${tag('fail')} Failed to start LTF Desktop Session: ${escapeHtml(err.message)}`, true);
   });
 
-  push('arch', BANNER);
+  const user = escapeHtml(local.get('prefs')?.user?.name || 'user');
   push('', '');
-  push('', 'ltf-os login: <b>ninja</b> (automatic login)', true);
-  progress(100, 'welcome, ninja');
+  push('', 'LTF OS (tty1)');
+  push('', '');
+  push('', `ltf login: <b>${user.toLowerCase().replace(/\s+/g, '')}</b> (automatic login)`, true);
+  progress(100, 'starting session');
   window.removeEventListener('keydown', skip);
   await sleep(skipped ? 150 : 650);
 

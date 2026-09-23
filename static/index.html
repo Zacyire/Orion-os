@@ -4,35 +4,57 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LTF OS</title>
-  <meta name="description" content="LTF OS — a web desktop operating system" />
+  <meta name="description" content="LTF OS — games and media, delivered as a desktop in your browser." />
+  <meta name="theme-color" content="#07080d" />
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/apps.css" />
+
+  <!-- System layer: tokens first, then components. Edit tokens.css to re-theme. -->
+  <link rel="stylesheet" href="css/system/tokens.css" />
+  <link rel="stylesheet" href="css/system/base.css" />
+  <link rel="stylesheet" href="css/system/boot.css" />
+  <link rel="stylesheet" href="css/system/desktop.css" />
+  <link rel="stylesheet" href="css/system/taskbar.css" />
+  <link rel="stylesheet" href="css/system/flyouts.css" />
+  <link rel="stylesheet" href="css/system/windows.css" />
+  <link rel="stylesheet" href="css/system/menus.css" />
+  <!-- App layer -->
+  <link rel="stylesheet" href="css/apps/common.css" />
+  <link rel="stylesheet" href="css/apps/frame.css" />
+  <link rel="stylesheet" href="css/apps/appstore.css" />
+  <link rel="stylesheet" href="css/apps/notepad.css" />
+  <link rel="stylesheet" href="css/apps/orion.css" />
+  <link rel="stylesheet" href="css/apps/notnetflix.css" />
+  <link rel="stylesheet" href="css/apps/spiceify.css" />
+  <link rel="stylesheet" href="css/apps/geforcenow.css" />
+  <link rel="stylesheet" href="css/apps/vapor.css" />
+  <link rel="stylesheet" href="css/apps/youtube.css" />
+
+  <link rel="preload" href="media/wallpapers/aurora-ridge.jpg" as="image" />
   <script type="module" src="js/app.js"></script>
 </head>
 <body class="tb-bottom booting">
-  <!-- ─────────────── Boot screen (Arch-style) ─────────────── -->
-  <section id="boot" aria-label="System boot">
+  <!-- ─────────────── Boot console ─────────────── -->
+  <section id="boot" aria-label="System startup">
     <pre id="boot-log" aria-live="polite"></pre>
     <div id="boot-loader">
       <div class="boot-progress">
         <span id="boot-percent">0%</span>
         <div class="boot-bar"><i id="boot-bar-fill"></i></div>
-        <small id="boot-status">starting…</small>
+        <small id="boot-status">starting</small>
       </div>
-      <!-- Drop your own meme at assets/ninja-ltf.png — falls back to the bundled SVG. -->
-      <img id="boot-spinner" src="assets/ninja-ltf.png" alt="Ninja low taper fade loading spinner"
-           onerror="this.onerror=null;this.src='assets/ninja-ltf.svg'" />
+      <div class="boot-dots" role="progressbar" aria-label="Loading"><i></i><i></i><i></i><i></i><i></i></div>
     </div>
     <p class="boot-hint">Press <kbd>Esc</kbd> to skip</p>
   </section>
 
   <!-- ─────────────── Desktop ─────────────── -->
   <main id="shell" aria-label="Desktop">
-    <canvas id="wallpaper"></canvas>
+    <!-- Live wallpaper: js/core/wallpaper.js mounts a <video autoplay loop muted>
+         (or image / canvas fallback) here from /api/content/wallpapers. -->
+    <div id="wallpaper" aria-hidden="true"></div>
+
     <div id="workarea">
       <div id="desktop" role="grid" aria-label="Desktop icons"></div>
-      <div id="widgets" aria-label="Desktop widgets"></div>
       <div id="windows"></div>
       <div id="snap-preview"></div>
     </div>
@@ -40,12 +62,11 @@
     <nav id="taskbar" aria-label="Taskbar">
       <div class="tb-section tb-apps">
         <button class="tb-btn tb-start" id="start-btn" title="Start (Ctrl+Space)" aria-label="Start"></button>
-        <button class="tb-btn tb-widgets-btn" id="widgets-btn" title="Widgets" aria-label="Toggle widgets"></button>
         <div id="tb-items" class="tb-items"></div>
       </div>
       <div class="tb-section tb-tray" id="tray">
-        <button class="tb-btn tray-cluster" id="tray-quick" title="Quick settings">
-          <span id="tray-net"></span><span id="tray-vol"></span><span id="tray-bat"></span>
+        <button class="tb-btn tray-cluster" id="tray-quick" title="Network and sound">
+          <span id="tray-net"></span><span id="tray-vol"></span>
         </button>
         <button class="tb-btn tray-clock" id="tray-clock" title="Date and time">
           <span id="clock-time">--:--</span><span id="clock-date"></span>
@@ -62,10 +83,9 @@
     <div id="drag-layer"></div>
   </main>
 
-  <!-- Power screen (shutdown / restart) -->
   <section id="power-screen" hidden>
     <div class="power-spinner"></div>
-    <p id="power-text">Shutting down…</p>
+    <p id="power-text">Shutting down</p>
   </section>
 </body>
 </html>

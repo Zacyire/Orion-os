@@ -1,0 +1,13 @@
+{
+  "_readme": "YouTube home feed shown when no search is active (and the only feed when YOUTUBE_API_KEY is not set). Each entry needs the 11-character video id; thumbnails are derived automatically.",
+  "sections": [
+    {
+      "title": "Blender Open Movies",
+      "videos": [
+        { "id": "eRsGyueVLvQ", "title": "Sintel — Open Movie by Blender Foundation", "channel": "Blender" },
+        { "id": "R6MlUcmOul8", "title": "Tears of Steel — Blender VFX Open Movie", "channel": "Blender" },
+        { "id": "aqz-KE-bpKQ", "title": "Big Buck Bunny 60fps 4K — Official Blender Foundation Short Film", "channel": "Blender" }
+      ]
+    }
+  ]
+}

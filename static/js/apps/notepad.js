@@ -156,7 +156,7 @@ export default {
             h('span', f.name), h('small', formatBytes(f.size))));
         }
       } catch {
-        popup.append(h('div.empty', 'Kernel offline'));
+        popup.append(h('div.empty', 'Server offline'));
       }
     }
     const closePopup = (e) => { if (popup && !popup.contains(e.target) && !e.target.closest('.tool-btn')) { popup.remove(); popup = null; } };

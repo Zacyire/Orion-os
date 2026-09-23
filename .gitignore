@@ -1,3 +1,5 @@
 /target
 /data/*
 !/data/.gitkeep
+/tools/wallpaper/node_modules
+/tools/wallpaper/*.webm

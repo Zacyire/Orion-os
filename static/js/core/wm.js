@@ -30,6 +30,15 @@ class WindowManager {
     $('#desktop').addEventListener('pointerdown', () => this.focus(null));
     window.addEventListener('resize', () => this.#clampAll());
     bus.on('wm:close-app', (appId) => this.closeApp(appId));
+    // Clicks inside an <iframe> never reach this document; the only signal is
+    // the top window losing focus to it. Focus the window that owns it.
+    window.addEventListener('blur', () => setTimeout(() => {
+      const active = document.activeElement;
+      if (active?.tagName === 'IFRAME') {
+        const id = active.closest('.window')?.dataset.id;
+        if (id) this.focus(id);
+      }
+    }));
   }
 
   get list() {
@@ -67,22 +76,22 @@ class WindowManager {
       }
     }
 
-    const win = this.#createWindow(app, mod);
+    const win = this.#createWindow(app, mod, args);
     this.#mount(win, mod, args);
     return win;
   }
 
-  #createWindow(app, mod) {
+  #createWindow(app, mod, args = {}) {
     const id = `w${++seq}`;
     const area = this.layer.getBoundingClientRect();
-    const [dw, dh] = mod.size || app.default_size || [800, 520];
+    const [dw, dh] = args.size || mod.size || app.default_size || [800, 520];
     const w = Math.min(dw, area.width - 20);
     const hgt = Math.min(dh, area.height - 20);
     const off = (cascade++ % 8) * 28;
     const x = clamp((area.width - w) / 2 + off - 84, 0, Math.max(0, area.width - w));
     const y = clamp((area.height - hgt) / 2 + off - 84, 0, Math.max(0, area.height - hgt));
 
-    const titleEl = h('span.win-title', app.name);
+    const titleEl = h('span.win-title', args.title || app.name);
     const maxBtn = h('button.win-max', { title: 'Maximize', 'aria-label': 'Maximize', html: icons.maximize });
     const titlebar = h('header.win-titlebar',
       appIcon(app, 'sm'),
@@ -104,7 +113,7 @@ class WindowManager {
     const win = {
       id, app, appId: app.id, el, body, titleEl, maxBtn,
       minimized: false, maximized: false, prev: null, instance: null, cleanup: null,
-      title: app.name,
+      title: args.title || app.name,
     };
     this.windows.set(id, win);
     this.layer.append(el);
@@ -294,6 +303,7 @@ class WindowManager {
         if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
         started = true;
         el.classList.add('dragging');
+        document.body.classList.add('wm-interacting');
         if (w.maximized) {
           // Pull out of maximized state, keeping the cursor proportionally on the titlebar.
           const prev = w.prev || { width: 900, height: 600 };
@@ -327,6 +337,7 @@ class WindowManager {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       el.classList.remove('dragging');
+      document.body.classList.remove('wm-interacting');
       this.#showSnap(null);
       if (started && snap) this.#applySnap(w, snap);
       if (started) w.instance?.onResize?.();
@@ -374,6 +385,7 @@ class WindowManager {
     const el = w.el;
     const start = { x: e.clientX, y: e.clientY, l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
     el.classList.add('resizing');
+    document.body.classList.add('wm-interacting');
     w.snapped = null;
 
     const move = (ev) => {
@@ -391,6 +403,7 @@ class WindowManager {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       el.classList.remove('resizing');
+      document.body.classList.remove('wm-interacting');
       w.instance?.onResize?.();
     };
     window.addEventListener('pointermove', move);
