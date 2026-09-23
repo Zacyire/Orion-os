@@ -59,6 +59,14 @@
     "developer": "LTF", "system": true, "default_size": [920, 620]
   },
   {
+    "id": "webtest", "name": "Web Test", "type": "web-app", "icon": "globe", "category": "System",
+    "description": "Temporary: loads example.com through the existing web-app container to verify the runtime.",
+    "developer": "LTF", "default_size": [1000, 700],
+    "target": "https://example.com/",
+    "navigation": "limited", "addressBar": false, "browserControls": false,
+    "controls": ["reload", "home", "external"]
+  },
+  {
     "id": "webplayer", "name": "Vapor Player", "type": "web-app", "icon": "vapor", "category": "Games",
     "description": "Window host for games launched from Vapor.",
     "developer": "LTF", "system": true, "hidden": true, "default_size": [900, 640],
