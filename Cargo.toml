@@ -1,0 +1,21 @@
+[package]
+name = "ltf-os"
+version = "0.1.0"
+edition = "2021"
+description = "LTF OS — a web-based desktop operating system with a Rust backend"
+license = "MIT"
+
+[dependencies]
+axum = { version = "0.8", features = ["ws", "multipart"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "cors", "compression-gzip"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rand = "0.8"
+futures-util = "0.3"
+
+[profile.release]
+lto = true
+codegen-units = 1

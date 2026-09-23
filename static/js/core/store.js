@@ -1,0 +1,101 @@
+// Preferences store. Source of truth lives on the Rust backend (`/api/prefs`);
+// a copy is mirrored to localStorage so the desktop survives offline boots.
+//
+//   store.get('taskbar.position')          → 'bottom'
+//   store.set('taskbar.position', 'left')  → emits 'prefs:taskbar' + debounced PATCH
+//   store.watch('taskbar', fn)             → fn(section) on change
+
+import { api } from './api.js';
+import { bus } from './events.js';
+import { local } from './dom.js';
+
+const FALLBACK = {
+  theme: { mode: 'dark', accent: '#7c5cff', transparency: true, wallpaper: 'particles', animateWallpaper: true },
+  taskbar: { position: 'bottom', pinned: ['explorer', 'appstore', 'music', 'movies', 'notepad', 'settings'], autoHide: false, centered: true },
+  desktop: { shortcuts: [
+    { app: 'appstore', col: 0, row: 0 }, { app: 'notepad', col: 0, row: 1 }, { app: 'games', col: 0, row: 2 },
+    { app: 'cloud', col: 0, row: 3 }, { app: 'settings', col: 0, row: 4 },
+  ] },
+  widgets: {
+    clock: { visible: true, x: null, y: null, style: 'digital' },
+    perf: { visible: true, x: null, y: null },
+    weather: { visible: true, x: null, y: null },
+    notes: { visible: false, x: null, y: null, text: '' },
+  },
+  boot: { skipAnimation: false },
+};
+
+let prefs = structuredClone(FALLBACK);
+const dirty = new Set();
+let flushTimer;
+
+function deepMerge(base, over) {
+  if (Array.isArray(over) || typeof over !== 'object' || over === null) return over;
+  const out = { ...(typeof base === 'object' && base && !Array.isArray(base) ? base : {}) };
+  for (const [k, v] of Object.entries(over)) out[k] = deepMerge(out[k], v);
+  return out;
+}
+
+export const store = {
+  async load() {
+    const cached = local.get('prefs');
+    try {
+      prefs = deepMerge(FALLBACK, await api.get('/prefs'));
+    } catch {
+      prefs = deepMerge(FALLBACK, cached || {});
+    }
+    local.set('prefs', prefs);
+    return prefs;
+  },
+
+  get(path) {
+    return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), prefs);
+  },
+
+  set(path, value) {
+    const keys = path.split('.');
+    let o = prefs;
+    for (const k of keys.slice(0, -1)) o = o[k] ??= {};
+    o[keys.at(-1)] = value;
+    const section = keys[0];
+    dirty.add(section);
+    local.set('prefs', prefs);
+    bus.emit(`prefs:${section}`, prefs[section]);
+    clearTimeout(flushTimer);
+    flushTimer = setTimeout(() => store.flush(), 400);
+  },
+
+  /** Mutate a section in place via callback, then persist. */
+  update(section, fn) {
+    fn(prefs[section]);
+    store.set(section, prefs[section]);
+  },
+
+  watch(section, fn) {
+    return bus.on(`prefs:${section}`, fn);
+  },
+
+  async flush() {
+    if (!dirty.size) return;
+    const patch = {};
+    for (const s of dirty) patch[s] = prefs[s];
+    dirty.clear();
+    try {
+      await api.patch('/prefs', patch);
+    } catch { /* offline — localStorage copy remains */ }
+  },
+
+  async reset() {
+    try {
+      prefs = deepMerge(FALLBACK, await api.post('/prefs/reset'));
+    } catch {
+      prefs = structuredClone(FALLBACK);
+    }
+    local.set('prefs', prefs);
+    for (const s of Object.keys(prefs)) bus.emit(`prefs:${s}`, prefs[s]);
+  },
+};
+
+// Arrays must be replaced wholesale, which merge-patch does — but we send
+// whole sections anyway so server and client never diverge.
+window.addEventListener('beforeunload', () => store.flush());

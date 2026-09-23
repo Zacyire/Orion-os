@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LTF OS</title>
+  <meta name="description" content="LTF OS — a web desktop operating system" />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/apps.css" />
+  <script type="module" src="js/app.js"></script>
+</head>
+<body class="tb-bottom booting">
+  <!-- ─────────────── Boot screen (Arch-style) ─────────────── -->
+  <section id="boot" aria-label="System boot">
+    <pre id="boot-log" aria-live="polite"></pre>
+    <div id="boot-loader">
+      <div class="boot-progress">
+        <span id="boot-percent">0%</span>
+        <div class="boot-bar"><i id="boot-bar-fill"></i></div>
+        <small id="boot-status">starting…</small>
+      </div>
+      <!-- Drop your own meme at assets/ninja-ltf.png — falls back to the bundled SVG. -->
+      <img id="boot-spinner" src="assets/ninja-ltf.png" alt="Ninja low taper fade loading spinner"
+           onerror="this.onerror=null;this.src='assets/ninja-ltf.svg'" />
+    </div>
+    <p class="boot-hint">Press <kbd>Esc</kbd> to skip</p>
+  </section>
+
+  <!-- ─────────────── Desktop ─────────────── -->
+  <main id="shell" aria-label="Desktop">
+    <canvas id="wallpaper"></canvas>
+    <div id="workarea">
+      <div id="desktop" role="grid" aria-label="Desktop icons"></div>
+      <div id="widgets" aria-label="Desktop widgets"></div>
+      <div id="windows"></div>
+      <div id="snap-preview"></div>
+    </div>
+
+    <nav id="taskbar" aria-label="Taskbar">
+      <div class="tb-section tb-apps">
+        <button class="tb-btn tb-start" id="start-btn" title="Start (Ctrl+Space)" aria-label="Start"></button>
+        <button class="tb-btn tb-widgets-btn" id="widgets-btn" title="Widgets" aria-label="Toggle widgets"></button>
+        <div id="tb-items" class="tb-items"></div>
+      </div>
+      <div class="tb-section tb-tray" id="tray">
+        <button class="tb-btn tray-cluster" id="tray-quick" title="Quick settings">
+          <span id="tray-net"></span><span id="tray-vol"></span><span id="tray-bat"></span>
+        </button>
+        <button class="tb-btn tray-clock" id="tray-clock" title="Date and time">
+          <span id="clock-time">--:--</span><span id="clock-date"></span>
+        </button>
+        <button class="tb-show-desktop" id="show-desktop" title="Show desktop" aria-label="Show desktop"></button>
+      </div>
+    </nav>
+
+    <div id="start-menu" class="flyout" hidden></div>
+    <div id="quick-settings" class="flyout" hidden></div>
+    <div id="calendar-flyout" class="flyout" hidden></div>
+    <div id="context-menu" role="menu" hidden></div>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="drag-layer"></div>
+  </main>
+
+  <!-- Power screen (shutdown / restart) -->
+  <section id="power-screen" hidden>
+    <div class="power-spinner"></div>
+    <p id="power-text">Shutting down…</p>
+  </section>
+</body>
+</html>
