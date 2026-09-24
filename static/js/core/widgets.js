@@ -11,9 +11,10 @@
 
 import { $ } from './dom.js';
 import { sysmon } from '../widgets/sysmon.js';
+import { netmon } from '../widgets/netmon.js';
 
 // First-party widgets shown on the desktop, in mount order.
-const WIDGETS = [sysmon];
+const WIDGETS = [sysmon, netmon];
 
 let root = null;
 const mounted = [];

@@ -77,3 +77,66 @@ state, and recovers automatically. It renders `—` (not `0%`) when
 `cpu.usage_percent` is null. Widgets mount through the small host in
 `static/js/core/widgets.js` into the `#widgets` desktop layer; add a new
 first-party widget by adding its module to that host's `WIDGETS` list.
+
+---
+
+# Network stats API — `GET /api/network/stats`
+
+Read-only server-side connectivity/latency for first-party desktop UI (the
+Network widget). Same `/api` boundary and conventions as `/api/system/stats`:
+GET-only, `Cache-Control: no-store`, no CORS, same-origin only, and it is not
+part of `window.ltf`.
+
+## Response
+
+Fixed schema (`schema: 1`):
+
+```json
+{ "schema": 1, "sampled_at_ms": 1790290306632, "online": true, "latency_ms": 1.6 }
+```
+
+| Field | Meaning |
+|---|---|
+| `schema` | Response version. |
+| `sampled_at_ms` | Unix ms of the last probe (or of startup, before the first). |
+| `online` | Whether the **server** reached the configured destination on the last probe. |
+| `latency_ms` | Server→destination round-trip in ms (one decimal), or `null` when the last probe failed or the check is disabled. |
+
+## What `latency_ms` measures — and what it does NOT
+
+`latency_ms` is the time for the **LTF server** to complete one lightweight HTTP
+GET to a single, **server-configured** destination (`LTF_NETCHECK_URL`, default
+`https://cloudflare.com/cdn-cgi/trace`). It is the **server's** network path.
+
+It is **not** the user's browser "ping". If LTF runs on the user's own machine
+the two are similar; if LTF is hosted remotely, this measures the server's path,
+not the user's. The widget labels it "Network latency / server → network"
+accordingly, never "your ping".
+
+`online` is derived from the same probe: a probe that gets any HTTP response
+(even 4xx/5xx) counts as reached; a connect failure or timeout is offline.
+
+## Sampling / caching
+
+A real probe runs at most once per **20 s** (`netstats::MIN_REFRESH`), with a
+4 s per-probe timeout. It is single-flight: only one probe is ever in flight,
+and requests arriving in between share the cached snapshot (compare
+`sampled_at_ms`). So rapid requests cannot turn the endpoint into a traffic
+generator — 25 requests in a burst cause exactly one outbound probe.
+
+## Security boundary
+
+- **No destination selection.** The target is fixed by server configuration and
+  can never be chosen by a request — no URL/host/IP/port parameter, no DNS from
+  user input, no `ping`/subprocess, no interface enumeration, no port scanning.
+  Query strings are ignored.
+- **Read-only.** GET only (403 without `X-LTF-Client`, 405 with it).
+- **Minimal output.** Only the four fields above — no IPs, hostnames, interface
+  names, MACs, SSIDs, routes, DNS config or credentials (the response contains
+  no strings at all). The probe client sends no cookies/credentials and does not
+  follow redirects.
+- **Config.** `LTF_NETCHECK_URL` overrides the destination; set it empty to
+  disable the check (then `online` is always `false`, `latency_ms` `null`). The
+  probe client is built with `no_proxy`, so it measures this server's own path.
+- Tests: `src/netstats.rs` (sampler, with a local mock) and the route tests in
+  `src/main.rs`; `tests/browser/netmon.browser.mjs` (widget).

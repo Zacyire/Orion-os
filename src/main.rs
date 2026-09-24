@@ -8,6 +8,7 @@ mod catalog;
 mod config;
 mod error;
 mod handlers;
+mod netstats;
 mod state;
 mod sysstats;
 mod web;
@@ -71,6 +72,7 @@ fn build_app(state: state::SharedState) -> Router {
         .route("/system/info", get(system::info))
         .route("/system/boot-log", get(system::boot_log))
         .route("/system/stats", get(system::stats))
+        .route("/network/stats", get(network::stats))
         .route("/ping", get(system::ping))
         .route("/prefs", get(prefs::get_prefs).put(prefs::put_prefs).patch(prefs::patch_prefs))
         .route("/prefs/reset", post(prefs::reset_prefs))
@@ -146,13 +148,38 @@ mod tests {
     }
 
     async fn test_app() -> TestApp {
+        test_app_with(|_| {}).await
+    }
+
+    async fn test_app_with(tweak: impl FnOnce(&mut Config)) -> TestApp {
         static N: AtomicUsize = AtomicUsize::new(0);
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
         let data_dir = std::env::temp_dir().join(format!("ltf-test-{}-{}-{nanos}", std::process::id(), N.fetch_add(1, Ordering::Relaxed)));
         let mut config = Config::from_env();
         config.data_dir = data_dir.clone();
+        // Tests must never touch the public internet: disable the connectivity
+        // check by default; individual tests point it at a local mock.
+        config.netcheck_url = None;
+        tweak(&mut config);
         let state = Arc::new(AppState::load(config).await.expect("state"));
         TestApp { router: build_app(state), data_dir }
+    }
+
+    /// Local HTTP server answering 200 to anything; returns its base URL.
+    async fn local_ok_server() -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            while let Ok((mut sock, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut buf = [0u8; 1024];
+                    let _ = sock.read(&mut buf).await;
+                    let _ = sock.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok").await;
+                });
+            }
+        });
+        format!("http://{addr}/")
     }
 
     async fn send(app: &TestApp, method: &str, uri: &str, client_header: bool) -> (StatusCode, header::HeaderMap, Vec<u8>) {
@@ -321,6 +348,119 @@ mod tests {
                 assert!(leaked.is_empty(), "{method} from {origin}: CORS headers {leaked:?}");
             }
         }
+    }
+
+    const NET_SCHEMA: &[&str] = &["latency_ms", "online", "sampled_at_ms", "schema"];
+
+    #[tokio::test]
+    async fn network_stats_shape_headers_and_online_measurement() {
+        let target = local_ok_server().await;
+        let app = test_app_with(|c| c.netcheck_url = Some(target)).await;
+        let (status, headers, body) = send(&app, "GET", "/api/network/stats", false).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(headers[header::CONTENT_TYPE].to_str().unwrap().starts_with("application/json"));
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(sorted_paths(&v), NET_SCHEMA, "network schema drifted — update docs");
+        assert_eq!(v["schema"], 1);
+        assert_eq!(v["online"], true);
+        assert!(v["online"].is_boolean());
+        let ms = v["latency_ms"].as_f64().expect("latency when online");
+        assert!((0.0..10_000.0).contains(&ms), "latency {ms}");
+        assert!(v["sampled_at_ms"].as_u64().unwrap() > 1_600_000_000_000);
+    }
+
+    #[tokio::test]
+    async fn network_stats_unreachable_target_is_offline_null_latency() {
+        // A port with nothing listening → connection refused.
+        let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = l.local_addr().unwrap();
+        drop(l);
+        let app = test_app_with(|c| c.netcheck_url = Some(format!("http://{addr}/"))).await;
+        let v = get_json(&app, "/api/network/stats").await;
+        assert_eq!(v["online"], false);
+        assert!(v["latency_ms"].is_null());
+        assert!(v["online"].is_boolean());
+    }
+
+    #[tokio::test]
+    async fn network_stats_disabled_check_is_offline() {
+        let app = test_app().await; // netcheck_url = None
+        let v = get_json(&app, "/api/network/stats").await;
+        assert_eq!(sorted_paths(&v), NET_SCHEMA);
+        assert_eq!(v["online"], false);
+        assert!(v["latency_ms"].is_null());
+    }
+
+    #[tokio::test]
+    async fn network_stats_ignores_parameters_and_rejects_writes() {
+        let target = local_ok_server().await;
+        let app = test_app_with(|c| c.netcheck_url = Some(target)).await;
+        let plain = get_json(&app, "/api/network/stats").await;
+        // A destination in the query string must be ignored, not probed.
+        let (status, _, body) = send(&app, "GET", "/api/network/stats?url=http://169.254.169.254/&host=evil.example&port=22&target=127.0.0.1", false).await;
+        assert_eq!(status, StatusCode::OK);
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(sorted_paths(&v), sorted_paths(&plain));
+        let text = String::from_utf8_lossy(&body);
+        assert!(!text.contains("169.254") && !text.contains("evil.example") && !text.contains(":22"), "{text}");
+        for m in ["POST", "PUT", "PATCH", "DELETE"] {
+            let (s, _, _) = send(&app, m, "/api/network/stats", false).await;
+            assert_eq!(s, StatusCode::FORBIDDEN, "{m} without X-LTF-Client");
+            let (s, _, _) = send(&app, m, "/api/network/stats", true).await;
+            assert_eq!(s, StatusCode::METHOD_NOT_ALLOWED, "{m} with X-LTF-Client");
+        }
+    }
+
+    #[tokio::test]
+    async fn network_stats_expose_no_sensitive_network_information() {
+        let target = local_ok_server().await;
+        let app = test_app_with(|c| c.netcheck_url = Some(target)).await;
+        let v = settled_net(&app).await;
+        // Only numbers/booleans — no strings at all (no IPs, hosts, ifaces, SSIDs).
+        let mut strings = Vec::new();
+        fn collect<'a>(v: &'a Value, out: &mut Vec<&'a str>) {
+            match v {
+                Value::String(s) => out.push(s),
+                Value::Array(a) => a.iter().for_each(|x| collect(x, out)),
+                Value::Object(m) => m.values().for_each(|x| collect(x, out)),
+                _ => {}
+            }
+        }
+        collect(&v, &mut strings);
+        assert!(strings.is_empty(), "network stats must contain no strings: {strings:?}");
+    }
+
+    #[tokio::test]
+    async fn network_stats_rapid_requests_do_not_re_probe() {
+        // A counting local server: each accepted connection increments a counter.
+        use std::sync::atomic::{AtomicUsize, Ordering as O};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        static HITS: AtomicUsize = AtomicUsize::new(0);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            while let Ok((mut sock, _)) = listener.accept().await {
+                HITS.fetch_add(1, O::Relaxed);
+                tokio::spawn(async move {
+                    let mut b = [0u8; 512];
+                    let _ = sock.read(&mut b).await;
+                    let _ = sock.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok").await;
+                });
+            }
+        });
+        let app = test_app_with(|c| c.netcheck_url = Some(format!("http://{addr}/"))).await;
+        for _ in 0..25 {
+            let (s, _, _) = send(&app, "GET", "/api/network/stats", false).await;
+            assert_eq!(s, StatusCode::OK);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        // 25 requests within MIN_REFRESH (20s) → exactly one real probe.
+        assert_eq!(HITS.load(O::Relaxed), 1, "rapid requests must share a single probe");
+    }
+
+    async fn settled_net(app: &TestApp) -> Value {
+        get_json(app, "/api/network/stats").await
     }
 
     #[tokio::test]

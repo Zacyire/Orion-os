@@ -16,6 +16,7 @@ use crate::{
     catalog,
     config::Config,
     sysstats::Sampler,
+    netstats::NetSampler,
     web::{inspect::InspectCache, limit::RateLimiter},
 };
 
@@ -45,6 +46,8 @@ pub struct AppState {
     pub inspect_cache: InspectCache,
     /// Read-only host stats sampler behind GET /api/system/stats.
     pub sysstats: Sampler,
+    /// Read-only connectivity/latency sampler behind GET /api/network/stats.
+    pub netstats: NetSampler,
     /// Serialises disk writes so concurrent saves never interleave.
     write_lock: Mutex<()>,
 }
@@ -85,12 +88,15 @@ impl AppState {
             .build()
             .map_err(std::io::Error::other)?;
 
+        let netstats = NetSampler::new(config.netcheck_url.clone());
+
         let (events, _) = broadcast::channel(64);
         let limiter = RateLimiter::new(config.rate_limit_per_min);
         Ok(Self {
             limiter,
             inspect_cache: InspectCache::default(),
             sysstats: Sampler::new(),
+            netstats,
             files_dir,
             prefs: RwLock::new(prefs),
             installed: RwLock::new(installed),

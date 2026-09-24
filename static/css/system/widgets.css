@@ -1,12 +1,16 @@
-/* Desktop widgets layer — above wallpaper/icons, below application windows. */
-#widgets { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
-#widgets > .widget { position: absolute; pointer-events: auto; }
-
-/* Default placement: top-right, clear of desktop icons (which flow top-left)
-   and the taskbar. Widgets shift with a top/left/right taskbar via tokens. */
-.widget[data-widget="sysmon"] { top: 20px; right: 20px; width: 264px; }
-body.tb-top .widget[data-widget="sysmon"] { top: calc(var(--tb-offset) + 20px); }
-body.tb-right .widget[data-widget="sysmon"] { right: calc(var(--tb-offset) + 20px); }
+/* Desktop widgets layer — above wallpaper/icons, below application windows.
+   A top-right column: widgets stack downward in mount order, clear of the
+   desktop icons (which flow top-left) and the taskbar. Adding a widget needs
+   no per-widget placement — it simply joins the column. */
+#widgets {
+  position: absolute; inset: 0; z-index: 5;
+  pointer-events: none;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 16px;
+  padding: 20px;
+}
+#widgets > .widget { pointer-events: auto; width: 264px; max-width: calc(100vw - 40px); }
+body.tb-top #widgets { padding-top: calc(var(--tb-offset) + 20px); }
+body.tb-right #widgets { padding-right: calc(var(--tb-offset) + 20px); }
 
 /* ─── System Monitor ─── */
 .sysmon {
@@ -54,6 +58,32 @@ body.tb-right .widget[data-widget="sysmon"] { right: calc(var(--tb-offset) + 20p
 .sysmon-facts dt { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); margin: 0; }
 .sysmon-facts dd { margin: 0; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
-@media (max-width: 640px) {
-  .widget[data-widget="sysmon"] { width: min(264px, calc(100vw - 40px)); }
+/* ─── Network Status ─── */
+.netmon {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px 15px;
+  border-radius: var(--radius-lg);
+  background: var(--acrylic);
+  -webkit-backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
+  backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
+  border: 1px solid var(--system-glass-border);
+  box-shadow: var(--shadow-lg, 0 18px 40px rgba(0, 0, 0, 0.4)), var(--system-glass-highlight);
+  color: var(--text);
+  animation: pop-in var(--dur, 200ms) var(--ease, ease);
 }
+.netmon-head { display: flex; align-items: center; justify-content: space-between; }
+.netmon-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--fs-sm); }
+.netmon-ico { display: inline-flex; color: var(--accent-color); }
+.netmon-ico svg { width: 14px; height: 14px; display: block; }
+
+.netmon-state { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--text); }
+.netmon-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); transition: background var(--dur-fast, 120ms); }
+.netmon-dot[data-kind="online"] { background: #37d399; box-shadow: 0 0 7px rgba(55, 211, 153, 0.7); }
+.netmon-dot[data-kind="wait"] { background: #f5b942; }
+.netmon-dot[data-kind="offline"] { background: #ff5a67; box-shadow: 0 0 7px rgba(255, 90, 103, 0.5); }
+.netmon-dot[data-kind="transport"] { background: #f5b942; box-shadow: 0 0 7px rgba(245, 185, 66, 0.5); }
+
+.netmon-metric { display: flex; align-items: baseline; justify-content: space-between; }
+.netmon-metric-label { font-size: var(--fs-xs); color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.netmon-value { font-size: var(--fs-md, 15px); font-weight: 600; font-variant-numeric: tabular-nums; }
+.netmon-note { font-size: var(--fs-xs); color: var(--text-3); }

@@ -28,6 +28,10 @@ pub struct Config {
     pub rate_limit_per_min: u32,
     /// YouTube Data API v3 key for `/api/youtube/search`.
     pub youtube_api_key: Option<String>,
+    /// Fixed destination for the server-side connectivity/latency check
+    /// (`/api/network/stats`). `LTF_NETCHECK_URL`; default
+    /// `crate::netstats::DEFAULT_NETCHECK_URL`; set empty to disable.
+    pub netcheck_url: Option<String>,
 }
 
 impl Config {
@@ -47,6 +51,11 @@ impl Config {
             trust_proxy_headers: var("LTF_TRUST_PROXY_HEADERS").is_some_and(|v| v == "1" || v == "true"),
             rate_limit_per_min: var("LTF_RATE_LIMIT").and_then(|v| v.parse().ok()).unwrap_or(240),
             youtube_api_key: var("YOUTUBE_API_KEY"),
+            netcheck_url: match std::env::var("LTF_NETCHECK_URL") {
+                Ok(v) if v.trim().is_empty() => None,                 // explicitly disabled
+                Ok(v) => Some(v),                                     // operator override
+                Err(_) => Some(crate::netstats::DEFAULT_NETCHECK_URL.to_string()),
+            },
         }
     }
 }
