@@ -156,6 +156,25 @@
     ]
   },
   {
+    "id": "apitest",
+    "name": "LTF App API Test",
+    "type": "web-app",
+    "icon": "code",
+    "category": "Developer",
+    "description": "Temporary: demonstrates the window.ltf app API.",
+    "developer": "LTF",
+    "hidden": true,
+    "default_size": [
+      600,
+      540
+    ],
+    "target": "apps/apitest/index.html",
+    "runtime": "direct",
+    "controls": [
+      "reload"
+    ]
+  },
+  {
     "id": "webplayer",
     "name": "Vapor Player",
     "type": "web-app",

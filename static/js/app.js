@@ -11,6 +11,7 @@ import { desktop } from './core/desktop.js';
 import { wallpaper } from './core/wallpaper.js';
 import { flyouts } from './core/flyouts.js';
 import { power } from './core/power.js';
+import { initAppBridge } from './core/appbridge.js';
 
 async function init() {
   await store.load();
@@ -24,6 +25,7 @@ async function init() {
   connectEvents();
   bindShortcuts();
   registerServiceWorker();
+  initAppBridge(); // window.ltf bridge for first-party app frames
 }
 
 /** static/sw.js: /net/ resource caching + offline shell. Never blocks boot. */
