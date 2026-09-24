@@ -170,6 +170,10 @@
     ],
     "target": "apps/playground/index.html",
     "runtime": "direct",
+    "permissions": [
+      "notifications",
+      "open-external"
+    ],
     "controls": [
       "reload"
     ]

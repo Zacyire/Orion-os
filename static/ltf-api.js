@@ -15,7 +15,10 @@
 (function () {
   if (window.top === window.self) return; // only meaningful inside an app frame
   var host = window.parent;
-  var app = { id: null, name: null, version: null };
+  // `permissions` lists the capability ids the host granted this app via its
+  // manifest. It is read-only, informational metadata — the host enforces
+  // capabilities regardless of what an app believes it has.
+  var app = { id: null, name: null, version: null, permissions: [] };
   var waiters = [];
 
   function post(msg) {
@@ -29,6 +32,7 @@
     app.id = d.app.id;
     app.name = d.app.name;
     app.version = d.app.version;
+    app.permissions = Array.isArray(d.app.permissions) ? d.app.permissions : [];
     waiters.splice(0).forEach(function (r) { r(app); });
   });
 

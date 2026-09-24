@@ -29,6 +29,11 @@
 .store-dialog label.row { display: flex; align-items: center; gap: 12px; }
 .store-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 
+/* Permission checkboxes (Step 10) */
+.store-perms { display: grid; gap: 6px; }
+.store-dialog label.store-perm { display: flex; align-items: center; gap: 8px; color: var(--text); cursor: pointer; }
+.store-perm input { width: 16px; height: 16px; accent-color: var(--accent-color); cursor: pointer; }
+
 /* Catalog discovery controls (search uses the toolbar field; chips below) */
 .store-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 14px; }
 .store-cats { display: flex; gap: 6px; flex-wrap: wrap; }

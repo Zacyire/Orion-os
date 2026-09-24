@@ -30,6 +30,12 @@
     ul.methods li { font-family: ui-monospace, monospace; color: #9cc4ff; }
     ul.methods small { color: #8a90a2; font-family: "Segoe UI", system-ui, sans-serif; }
     .log { font-family: ui-monospace, monospace; font-size: 12px; color: #8a90a2; margin-top: 10px; min-height: 16px; }
+    ul.perms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    ul.perms li { display: flex; align-items: center; gap: 8px; }
+    .pill { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+    .pill.on { background: rgba(55,211,153,.16); color: #37d399; }
+    .pill.off { background: rgba(255,90,103,.16); color: #ff5a67; }
+    .empty { color: #8a90a2; }
   </style>
 </head>
 <body>
@@ -46,6 +52,11 @@
   </section>
 
   <section>
+    <h2>Permissions</h2>
+    <ul class="perms" id="perms"><li class="empty">—</li></ul>
+  </section>
+
+  <section>
     <h2>API status</h2>
     <div class="status"><span id="dot" class="dot bad"></span><span id="status">Checking…</span></div>
     <div class="row" style="margin-top:14px">
@@ -58,16 +69,46 @@
   <section>
     <h2>Available API methods</h2>
     <ul class="methods">
-      <li>ltf.app <small>— { id, name, version } (read-only)</small></li>
+      <li>ltf.app <small>— { id, name, version, permissions } (read-only)</small></li>
       <li>ltf.ready() <small>— resolves when metadata is available</small></li>
-      <li>ltf.open(url) <small>— open an http(s) URL in Orion</small></li>
-      <li>ltf.notify(title, body) <small>— show an in-OS notification</small></li>
+      <li>ltf.open(url) <small id="cap-open">— open an http(s) URL in Orion</small></li>
+      <li>ltf.notify(title, body) <small id="cap-notify">— show an in-OS notification</small></li>
     </ul>
   </section>
 
   <script>
     var $ = function (id) { return document.getElementById(id); };
     var log = function (m) { $('log').textContent = m; };
+    // Labels for the two currently supported capabilities. The host enforces
+    // these; the app only reads its granted list to reflect state in the UI.
+    var PERM_LABELS = { notifications: 'Notifications', 'open-external': 'Open external URLs' };
+    var ALL_PERMS = ['notifications', 'open-external'];
+
+    function renderPerms(perms) {
+      var granted = {};
+      (perms || []).forEach(function (p) { granted[p] = true; });
+      var list = $('perms');
+      list.innerHTML = '';
+      ALL_PERMS.forEach(function (p) {
+        var li = document.createElement('li');
+        var pill = document.createElement('span');
+        pill.className = 'pill ' + (granted[p] ? 'on' : 'off');
+        pill.textContent = granted[p] ? 'granted' : 'not granted';
+        var label = document.createElement('span');
+        label.textContent = PERM_LABELS[p];
+        li.appendChild(pill);
+        li.appendChild(label);
+        list.appendChild(li);
+      });
+      // Annotate each API test with whether this app is permitted to use it.
+      var mark = function (el, ok) { el.textContent = ok ? '— permitted' : '— blocked (permission not granted)'; el.style.color = ok ? '#37d399' : '#ff5a67'; };
+      mark($('cap-open'), !!granted['open-external']);
+      mark($('cap-notify'), !!granted['notifications']);
+      // Reflect permission state on the action buttons too.
+      $('open').disabled = !granted['open-external'];
+      $('notify').disabled = !granted['notifications'];
+    }
+
     if (!window.ltf) {
       $('status').textContent = 'window.ltf unavailable in this context';
     } else {
@@ -77,6 +118,7 @@
         $('version').textContent = app.version || '(none)';
         $('status').textContent = 'Ready';
         $('dot').className = 'dot';
+        renderPerms(app.permissions);
       });
       $('open').onclick = function () {
         try { window.ltf.open('https://example.com/'); log('called ltf.open("https://example.com/")'); }

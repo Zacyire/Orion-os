@@ -38,12 +38,28 @@ function saveUserApps(list) {
 }
 const RUNTIMES = ['direct', 'embed', 'external'];
 
+// App capability permissions (Step 10). Deliberately tiny: this is the seam a
+// future storage/clipboard/dialog/IPC permission would slot into. A permission
+// is only ever granted by the app's manifest (host-controlled); an app can
+// never grant itself one from JavaScript.
+export const PERMISSIONS = ['notifications', 'open-external'];
+export const PERMISSION_LABELS = {
+  notifications: 'Notifications',
+  'open-external': 'Open external URLs',
+};
+
+/** Normalize a manifest's permissions to a clean array of known ids (default []). */
+export function normalizePermissions(list) {
+  if (!Array.isArray(list)) return [];
+  return PERMISSIONS.filter((p) => list.includes(p)); // known ids only, deduped, stable order
+}
+
 /**
  * Validate and normalize a web-app manifest's editable fields. Throws an Error
  * with a human message on invalid input; callers surface it in the UI.
  * `icon`/`iconUrl` are interchangeable on input (older manifests used `icon`).
  */
-export function validateWebAppFields({ name, target, runtime, icon, iconUrl }) {
+export function validateWebAppFields({ name, target, runtime, icon, iconUrl, permissions }) {
   name = (name || '').trim();
   if (!name) throw new Error('Name is required.');
   if (name.length > 60) throw new Error('Name is too long (60 characters max).');
@@ -55,7 +71,7 @@ export function validateWebAppFields({ name, target, runtime, icon, iconUrl }) {
   }
   if (!/^https?:$/.test(url.protocol)) throw new Error('Only http:// and https:// URLs are supported.');
   const rt = RUNTIMES.includes(runtime) ? runtime : 'direct';
-  const out = { name, target: url.href, runtime: rt };
+  const out = { name, target: url.href, runtime: rt, permissions: normalizePermissions(permissions) };
   // Icon URL. `icon` may instead hold a glyph name (e.g. "globe") from a
   // catalog entry — that is not a URL and is left untouched, not rejected.
   const explicit = iconUrl != null ? String(iconUrl).trim() : '';
@@ -70,7 +86,7 @@ export function validateWebAppFields({ name, target, runtime, icon, iconUrl }) {
 
 /** Build a full stored manifest for a user web app. */
 function userManifest(id, fields) {
-  const m = { id, name: fields.name, type: 'web-app', runtime: fields.runtime, target: fields.target, local: true };
+  const m = { id, name: fields.name, type: 'web-app', runtime: fields.runtime, target: fields.target, permissions: fields.permissions || [], local: true };
   if (fields.iconUrl) m.iconUrl = fields.iconUrl;
   return m;
 }
@@ -95,6 +111,9 @@ function normalize(a) {
     ...a,
     type,
     module: a.module || (type === 'web-app' ? 'webapp' : type === 'browser' ? 'orion' : a.id),
+    // Missing permissions == no capabilities. Sanitized to known ids so a bad
+    // manifest can never smuggle in an unknown capability.
+    permissions: normalizePermissions(a.permissions),
   };
 }
 const byId = new Map();
@@ -167,6 +186,11 @@ export const registry = {
   installed: () => catalog.filter((a) => a.installed && !a.hidden),
   get: (id) => byId.get(id),
   isInstalled: (id) => !!byId.get(id)?.installed,
+
+  /** Permissions granted to an app by its (host-controlled) manifest. */
+  permissions: (id) => byId.get(id)?.permissions || [],
+  /** Does an app's manifest grant a given capability? */
+  hasPermission: (id, perm) => (byId.get(id)?.permissions || []).includes(perm),
 
   async install(id) {
     try {

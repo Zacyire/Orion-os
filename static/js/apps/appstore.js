@@ -1,7 +1,7 @@
 // App Store — browse, install, uninstall and launch apps from the registry.
 import { h, fill } from '../core/dom.js';
 import { icons, appIcon } from '../core/icons.js';
-import { registry } from '../core/registry.js';
+import { registry, PERMISSIONS, PERMISSION_LABELS } from '../core/registry.js';
 import { taskbar } from '../core/taskbar.js';
 
 const CATS = [
@@ -130,6 +130,12 @@ export default {
         h('option', { value: 'external', selected: rt === 'external' }, 'External — open the site in Orion'),
       );
       const icon = h('input.field', { type: 'url', placeholder: 'https://…/icon.png (optional)', value: existing?.iconUrl || '' });
+      // Permission checkboxes — one per currently supported capability. An app
+      // only receives a capability if its box is checked (stored in the manifest).
+      const granted = new Set(existing?.permissions || []);
+      const permBoxes = PERMISSIONS.map((p) => h('input', { type: 'checkbox', value: p, checked: granted.has(p) }));
+      const perms = h('div.store-perms', PERMISSIONS.map((p, i) =>
+        h('label.store-perm', permBoxes[i], h('span', PERMISSION_LABELS[p]))));
       const dialog = h('div.store-dialog-backdrop',
         h('form.store-dialog.glass',
           h('h2', editing ? 'Edit web app' : 'New web app'),
@@ -137,6 +143,7 @@ export default {
           h('label', h('span', 'Target URL'), url),
           h('label', h('span', 'Runtime'), runtime),
           h('label', h('span', 'Icon URL (optional)'), icon),
+          h('label', h('span', 'Permissions'), perms),
           h('p.muted', { style: { margin: '0', fontSize: 'var(--fs-xs)' } }, 'Saved in this browser. Sites that block embedding won’t display in Direct mode — use External to open them in Orion.'),
           h('div.store-dialog-actions',
             h('button.btn', { type: 'button', onclick: () => dialog.remove() }, 'Cancel'),
@@ -144,7 +151,8 @@ export default {
         ));
       dialog.querySelector('form').addEventListener('submit', (e) => {
         e.preventDefault();
-        const fields = { name: name.value, target: url.value, runtime: runtime.value, icon: icon.value };
+        const permissions = permBoxes.filter((b) => b.checked).map((b) => b.value);
+        const fields = { name: name.value, target: url.value, runtime: runtime.value, icon: icon.value, permissions };
         try {
           const app = editing ? registry.editLocal(existing.id, fields) : registry.createLocal(fields);
           dialog.remove();

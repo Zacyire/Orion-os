@@ -17,12 +17,15 @@
 // be added without touching the gate or the existing groups:
 //
 //   appbridge
-//     ├── metadata       — hello → the app's own { id, name, version }
-//     ├── navigation     — open(url) → Orion
-//     └── notifications  — notify(title, body) → toast
+//     ├── metadata       — hello → the app's own { id, name, version, permissions }
+//     ├── navigation     — open(url) → Orion          [requires "open-external"]
+//     └── notifications  — notify(title, body) → toast [requires "notifications"]
 //
-// Each handler receives (msg, ctx) where ctx = { source, app } and returns
-// nothing; adding a capability means adding one entry to `handlers`.
+// Each entry is { perm?, run(msg, ctx) } where ctx = { source, appId, app }.
+// Before an action runs, the calling app's MANIFEST permissions (from the
+// host-controlled registry, never from the message) are checked against `perm`;
+// a missing permission means the request is safely ignored. Adding a capability
+// means adding one entry — the gate and permission check are shared.
 
 import { wm } from './wm.js';
 import { registry } from './registry.js';
@@ -46,11 +49,22 @@ function senderApp(source) {
 }
 
 // ── metadata ──────────────────────────────────────────────────────────────
-// Reply with the requesting app's OWN public metadata only. Nothing else about
-// the OS or other apps is ever disclosed.
+// Reply with the requesting app's OWN public metadata only (including its
+// granted permission ids, so the app can adapt its UI). Nothing else about the
+// OS or other apps is ever disclosed. No permission is required to learn one's
+// own identity.
 function handleHello(_msg, { source, app, appId }) {
   source.postMessage(
-    { source: 'ltf-host', type: 'app', app: { id: appId, name: app?.name || appId, version: app?.version || null } },
+    {
+      source: 'ltf-host',
+      type: 'app',
+      app: {
+        id: appId,
+        name: app?.name || appId,
+        version: app?.version || null,
+        permissions: registry.permissions(appId),
+      },
+    },
     location.origin,
   );
 }
@@ -71,10 +85,12 @@ function handleNotify(msg, { app }) {
   notify(title, body);
 }
 
+// A handler may declare a required capability (`perm`); the dispatcher enforces
+// it against the app's manifest before running. `hello` needs none.
 const handlers = {
-  hello: handleHello,
-  open: handleOpen,
-  notify: handleNotify,
+  hello: { run: handleHello },
+  open: { perm: 'open-external', run: handleOpen },
+  notify: { perm: 'notifications', run: handleNotify },
 };
 
 export function initAppBridge() {
@@ -85,6 +101,9 @@ export function initAppBridge() {
     if (!ctx) return; // unknown / untrusted sender
     const handler = handlers[d.type];
     if (!handler) return;
-    handler(d, { source: e.source, appId: ctx.appId, app: registry.get(ctx.appId) });
+    // Permission comes from the host-controlled manifest, never the message, so
+    // an app can never grant itself a capability. Missing → safely ignored.
+    if (handler.perm && !registry.hasPermission(ctx.appId, handler.perm)) return;
+    handler.run(d, { source: e.source, appId: ctx.appId, app: registry.get(ctx.appId) });
   });
 }
