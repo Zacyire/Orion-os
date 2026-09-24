@@ -1,9 +1,14 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use axum::{extract::State, Json};
+use axum::{
+    extract::State,
+    http::{header, HeaderValue},
+    response::{IntoResponse, Response},
+    Json,
+};
 use serde_json::{json, Value};
 
-use crate::state::SharedState;
+use crate::{error::ApiError, state::SharedState};
 
 pub async fn info(State(state): State<SharedState>) -> Json<Value> {
     let c = &state.config;
@@ -20,6 +25,21 @@ pub async fn info(State(state): State<SharedState>) -> Json<Value> {
             "youtube_search": c.youtube_api_key.is_some(),
         },
     }))
+}
+
+/// `GET /api/system/stats` — live, read-only host statistics (CPU, memory,
+/// uptime, OS/arch) for first-party desktop UI. Fixed schema, no parameters:
+/// nothing in the request can select a file, process, command or other host
+/// resource. See src/sysstats.rs and docs/system-stats.md.
+pub async fn stats(State(state): State<SharedState>) -> Result<Response, ApiError> {
+    // sysinfo reads /proc (or the platform equivalent) synchronously.
+    let snap = tokio::task::spawn_blocking(move || state.sysstats.sample())
+        .await
+        .map_err(|e| ApiError::Internal(format!("system stats sampler failed: {e}")))?;
+    let mut res = Json(snap).into_response();
+    // Live data: never let a browser or intermediary reuse it.
+    res.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    Ok(res)
 }
 
 /// Cheap endpoint for client-side round-trip latency measurement.

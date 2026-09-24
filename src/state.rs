@@ -15,6 +15,7 @@ use tokio::sync::{broadcast, Mutex, RwLock};
 use crate::{
     catalog,
     config::Config,
+    sysstats::Sampler,
     web::{inspect::InspectCache, limit::RateLimiter},
 };
 
@@ -42,6 +43,8 @@ pub struct AppState {
     pub http: reqwest::Client,
     pub limiter: RateLimiter,
     pub inspect_cache: InspectCache,
+    /// Read-only host stats sampler behind GET /api/system/stats.
+    pub sysstats: Sampler,
     /// Serialises disk writes so concurrent saves never interleave.
     write_lock: Mutex<()>,
 }
@@ -87,6 +90,7 @@ impl AppState {
         Ok(Self {
             limiter,
             inspect_cache: InspectCache::default(),
+            sysstats: Sampler::new(),
             files_dir,
             prefs: RwLock::new(prefs),
             installed: RwLock::new(installed),

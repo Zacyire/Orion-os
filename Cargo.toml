@@ -17,6 +17,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots", "rustls-tls-native-roots", "gzip", "brotli", "stream", "json"] }
 url = "2.5.8"
+# Read-only host stats for /api/system/stats. Only the "system" feature: the
+# user, disk, network and component APIs are not compiled in at all.
+sysinfo = { version = "0.38", default-features = false, features = ["system"] }
+
+[dev-dependencies]
+# Route-level tests (already in the tree via axum).
+tower = { version = "0.5", features = ["util"] }
 
 [profile.release]
 lto = true
