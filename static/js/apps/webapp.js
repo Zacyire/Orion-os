@@ -49,15 +49,53 @@ const siteOf = (url) => {
 // label for "target is a provider embed URL", not a separate implementation
 // (docs/runtime-architecture-review.md). `proxy: "isolated"` is not a runtime —
 // it is passed to the frame handler as env.isolated and applied by frame.js.
-const RUNTIME_HANDLERS = {
-  direct: { mount: mountFrame },
-  embed: { mount: mountFrame },
-  external: { mount: mountExternal },
-};
+export const RUNTIME_HANDLERS = Object.freeze({
+  direct: Object.freeze({ mount: mountFrame }),
+  embed: Object.freeze({ mount: mountFrame }),
+  external: Object.freeze({ mount: mountExternal }),
+});
+
+/**
+ * Resolve a requested runtime to { id, handler }. The request is normalized
+ * against the authoritative list first (unknown/hostile → DEFAULT_RUNTIME), then
+ * looked up as an OWN property of `handlers`, so inherited names such as
+ * "constructor" can never act as handlers. A runtime that is defined but has no
+ * handler resolves to handler: null — callers must fail closed rather than
+ * substitute another runtime. `handlers` is injectable for contract tests.
+ */
+export function resolveRuntime(requested, handlers = RUNTIME_HANDLERS) {
+  const id = normalizeRuntime(requested);
+  return { id, handler: Object.hasOwn(handlers, id) ? handlers[id] : null };
+}
+
+/** Defined runtime ids that have no handler (should always be empty). */
+export function missingRuntimeHandlers(handlers = RUNTIME_HANDLERS) {
+  return RUNTIMES.filter((id) => !Object.hasOwn(handlers, id));
+}
 
 // Guard against a runtime being defined without a handler.
-for (const id of RUNTIMES) {
-  if (!Object.hasOwn(RUNTIME_HANDLERS, id)) console.error(`[webapp] no handler for runtime "${id}"`);
+for (const id of missingRuntimeHandlers()) console.error(`[webapp] no handler for runtime "${id}"`);
+
+/**
+ * Mount `ctx.app` using `handlers` (the real table unless a test injects one).
+ * Built-in and local apps take the same path: the manifest (or launch arg)
+ * runtime goes through resolveRuntime().
+ */
+export function mountWithHandlers(root, ctx, handlers = RUNTIME_HANDLERS) {
+  const app = ctx.app;
+  const args = ctx.args || {};
+  if (args.title) ctx.win.setTitle(args.title);
+
+  const env = {
+    root, ctx, app, args,
+    target: args.url || app.target,
+    isolated: args.proxy === true || args.proxy === 'isolated' || app.proxy === 'isolated',
+  };
+  const { id, handler } = resolveRuntime(args.runtime || app.runtime, handlers);
+  // Defined but unhandled: refuse to render rather than silently loading the
+  // target through some other runtime's path.
+  if (!handler) return mountUnavailable(env, id);
+  return handler.mount(env);
 }
 
 export default {
@@ -65,22 +103,21 @@ export default {
   single: (app) => !app.hidden && app.single !== false,
 
   mount(root, ctx) {
-    const app = ctx.app;
-    const args = ctx.args || {};
-    if (args.title) ctx.win.setTitle(args.title);
-
-    // Built-in and local apps take the same path: the manifest (or launch arg)
-    // runtime is normalized against the authoritative list, so an unknown or
-    // hostile value can only ever resolve to the default handler.
-    const runtime = normalizeRuntime(args.runtime || app.runtime);
-    const handler = Object.hasOwn(RUNTIME_HANDLERS, runtime) ? RUNTIME_HANDLERS[runtime] : RUNTIME_HANDLERS.direct;
-    return handler.mount({
-      root, ctx, app, args,
-      target: args.url || app.target,
-      isolated: args.proxy === true || args.proxy === 'isolated' || app.proxy === 'isolated',
-    });
+    return mountWithHandlers(root, ctx);
   },
 };
+
+// Fail-closed screen for a runtime that is defined but has no handler. Loads
+// nothing (no iframe, no network request) and returns no lifecycle hooks.
+function mountUnavailable({ root }, id) {
+  console.error(`[webapp] runtime "${id}" has no handler; refusing to mount`);
+  root.append(h('div.app.webapp', h('div.frame-notice.frame-error', { dataset: { code: 'RUNTIME_UNAVAILABLE' } },
+    h('div.frame-error-icon', { html: icons.shield }),
+    h('h2', 'App runtime unavailable'),
+    h('p', 'This app uses a runtime that isn’t available in this version of LTF OS, so it wasn’t loaded.'),
+    h('code', id),
+  )));
+}
 
 // "external" runtime: never embed — present an Orion hand-off instead. Used
 // for sites that decline framing, so the app degrades gracefully rather

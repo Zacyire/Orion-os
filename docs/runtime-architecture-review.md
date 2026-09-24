@@ -393,3 +393,23 @@ This step made **no** functional changes:
 The single code change that Step 14 would need (making the runtime list data and
 adding a handler table) is described, **not implemented**, per the step's
 "prefer zero code changes" instruction.
+
+---
+
+## Status addendum (Steps 14–15)
+
+- **Step 14 (`4588287`)** implemented the seam from §4: `static/js/core/runtimes.js`
+  is the single runtime list; `webapp.js` dispatches through `RUNTIME_HANDLERS`;
+  registry validation and the App Store read the same list.
+- **Step 15** hardened it:
+  - `RUNTIME_DEFS`, `RUNTIMES` and `RUNTIME_HANDLERS` are frozen.
+  - Dispatch is exposed as `resolveRuntime()` / `missingRuntimeHandlers()` /
+    `mountWithHandlers()` in `webapp.js`. Unknown values still normalize to
+    `direct`, but a runtime that is **defined without a handler now fails closed**
+    (a `RUNTIME_UNAVAILABLE` screen, nothing loaded) instead of silently using the
+    direct frame.
+  - Contract tests: `node --test tests/*.test.mjs` (no dependencies).
+  - Browser regression tests: `cargo build && node tests/browser/runtime.browser.mjs`
+    (self-contained: starts its own throwaway server and test site).
+- To add a runtime: one entry in `runtimes.js`, one handler in `webapp.js`, and
+  update the expected set in `tests/runtime-contract.test.mjs`.

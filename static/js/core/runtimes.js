@@ -17,14 +17,16 @@
 
 export const DEFAULT_RUNTIME = 'direct';
 
-export const RUNTIME_DEFS = [
+// Frozen: this list is the authority, so nothing can register a runtime at run
+// time (e.g. RUNTIMES.push(...)) and widen what normalizeRuntime accepts.
+export const RUNTIME_DEFS = Object.freeze([
   { id: 'direct', label: 'Direct — show the site in the app window' },
   { id: 'embed', label: 'Embed — target is a provider embed URL' },
   { id: 'external', label: 'External — open the site in Orion' },
-];
+].map((r) => Object.freeze(r)));
 
 /** Known runtime ids, in display order. */
-export const RUNTIMES = RUNTIME_DEFS.map((r) => r.id);
+export const RUNTIMES = Object.freeze(RUNTIME_DEFS.map((r) => r.id));
 
 /**
  * A known runtime id, or DEFAULT_RUNTIME for anything else (missing, unknown,
