@@ -1,0 +1,59 @@
+/* Desktop widgets layer — above wallpaper/icons, below application windows. */
+#widgets { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+#widgets > .widget { position: absolute; pointer-events: auto; }
+
+/* Default placement: top-right, clear of desktop icons (which flow top-left)
+   and the taskbar. Widgets shift with a top/left/right taskbar via tokens. */
+.widget[data-widget="sysmon"] { top: 20px; right: 20px; width: 264px; }
+body.tb-top .widget[data-widget="sysmon"] { top: calc(var(--tb-offset) + 20px); }
+body.tb-right .widget[data-widget="sysmon"] { right: calc(var(--tb-offset) + 20px); }
+
+/* ─── System Monitor ─── */
+.sysmon {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px 16px 15px;
+  border-radius: var(--radius-lg);
+  background: var(--acrylic);
+  -webkit-backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
+  backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
+  border: 1px solid var(--system-glass-border);
+  box-shadow: var(--shadow-lg, 0 18px 40px rgba(0, 0, 0, 0.4)), var(--system-glass-highlight);
+  color: var(--text);
+  animation: pop-in var(--dur, 200ms) var(--ease, ease);
+}
+
+.sysmon-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sysmon-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.01em; }
+.sysmon-ico { display: inline-flex; color: var(--accent-color); }
+.sysmon-ico svg, .sysmon-label svg, .sysmon-facts dt svg { width: 14px; height: 14px; display: block; }
+
+.sysmon-state { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-3); }
+.sysmon-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); box-shadow: 0 0 6px transparent; transition: background var(--dur-fast, 120ms); }
+.sysmon-dot[data-kind="ok"] { background: #37d399; box-shadow: 0 0 7px rgba(55, 211, 153, 0.7); }
+.sysmon-dot[data-kind="wait"] { background: #f5b942; }
+.sysmon-dot[data-kind="off"] { background: #ff5a67; box-shadow: 0 0 7px rgba(255, 90, 103, 0.5); }
+
+.sysmon-metric { display: flex; flex-direction: column; gap: 6px; }
+.sysmon-metric-top { display: flex; align-items: baseline; justify-content: space-between; }
+.sysmon-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.sysmon-label svg { color: var(--text-3); }
+.sysmon-metric-top b { font-size: var(--fs-md, 15px); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.sysmon-bar { height: 6px; border-radius: 999px; background: rgba(127, 128, 147, 0.22); overflow: hidden; }
+.sysmon-bar i {
+  display: block; height: 100%; width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 55%, #00d4ff));
+  transition: width 600ms var(--ease, ease), background 300ms ease;
+}
+.sysmon-bar i[data-level="mid"] { background: linear-gradient(90deg, #f5b942, #ffb35a); }
+.sysmon-bar i[data-level="high"] { background: linear-gradient(90deg, #ff7a59, #ff5a67); }
+.sysmon-bar i[data-level="none"] { background: rgba(127, 128, 147, 0.4); }
+
+.sysmon-facts { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 2px 0 0; font-size: var(--fs-xs); }
+.sysmon-facts dt { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); margin: 0; }
+.sysmon-facts dd { margin: 0; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .widget[data-widget="sysmon"] { width: min(264px, calc(100vw - 40px)); }
+}

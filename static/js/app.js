@@ -12,6 +12,7 @@ import { wallpaper } from './core/wallpaper.js';
 import { flyouts } from './core/flyouts.js';
 import { power } from './core/power.js';
 import { initAppBridge } from './core/appbridge.js';
+import { widgets } from './core/widgets.js';
 
 async function init() {
   await store.load();
@@ -21,6 +22,7 @@ async function init() {
   taskbar.init();
   startMenu.init();
   desktop.init();
+  widgets.init();
   await wallpaper.init();
   connectEvents();
   bindShortcuts();

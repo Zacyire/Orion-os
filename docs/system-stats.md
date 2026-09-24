@@ -66,3 +66,14 @@ const stats = await api.get('/system/stats');
   `/proxy/page` documents cannot. A route test pins the "no CORS headers"
   property.
 - Tests: `src/sysstats.rs` (sampler) and the route tests in `src/main.rs`.
+
+## First consumer: the System Monitor widget
+
+`static/js/widgets/sysmon.js` is the first first-party desktop widget and the
+first consumer of this endpoint. It shows live CPU %, memory % and used/total,
+host uptime and platform (os · arch), polling every 2 s via `api.get('/system/stats')`.
+It keeps the last good values during an outage, shows an "Offline · retrying"
+state, and recovers automatically. It renders `—` (not `0%`) when
+`cpu.usage_percent` is null. Widgets mount through the small host in
+`static/js/core/widgets.js` into the `#widgets` desktop layer; add a new
+first-party widget by adding its module to that host's `WIDGETS` list.
