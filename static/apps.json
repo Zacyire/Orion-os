@@ -156,19 +156,19 @@
     ]
   },
   {
-    "id": "apitest",
-    "name": "LTF App API Test",
+    "id": "playground",
+    "name": "LTF API Playground",
     "type": "web-app",
     "icon": "code",
     "category": "Developer",
-    "description": "Temporary: demonstrates the window.ltf app API.",
+    "description": "Internal developer tool for the window.ltf app API.",
     "developer": "LTF",
     "hidden": true,
     "default_size": [
-      600,
-      540
+      620,
+      600
     ],
-    "target": "apps/apitest/index.html",
+    "target": "apps/playground/index.html",
     "runtime": "direct",
     "controls": [
       "reload"

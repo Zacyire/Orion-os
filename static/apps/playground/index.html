@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LTF API Playground</title>
+  <!-- Permanent internal developer tool for the window.ltf app API.
+       First-party page: served from the LTF OS origin and shown in an app
+       window, which is the only context where window.ltf is exposed. -->
+  <script src="/ltf-api.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: 26px 30px;
+      font: 14px/1.5 "Segoe UI", system-ui, sans-serif; color: #eef0f5; background: #14161d; }
+    h1 { font-size: 20px; margin: 0 0 2px; }
+    .sub { color: #f5b942; font-size: 12px; margin: 0 0 22px; }
+    section { background: #1c1f29; border: 1px solid #2a2e3a; border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #8a90a2; margin: 0 0 12px; }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+    dt { color: #8a90a2; } dd { margin: 0; font-family: ui-monospace, monospace; }
+    .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #37d399; box-shadow: 0 0 8px #37d399; }
+    .dot.bad { background: #ff5a67; box-shadow: 0 0 8px #ff5a67; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    button { font: inherit; font-weight: 600; padding: 10px 18px; border: 0; border-radius: 8px; background: #4c8dff; color: #fff; cursor: pointer; }
+    button.secondary { background: #2a2e3a; }
+    button:hover { filter: brightness(1.1); }
+    ul.methods { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    ul.methods li { font-family: ui-monospace, monospace; color: #9cc4ff; }
+    ul.methods small { color: #8a90a2; font-family: "Segoe UI", system-ui, sans-serif; }
+    .log { font-family: ui-monospace, monospace; font-size: 12px; color: #8a90a2; margin-top: 10px; min-height: 16px; }
+  </style>
+</head>
+<body>
+  <h1>LTF API Playground</h1>
+  <p class="sub">Internal developer tool — not an installed application.</p>
+
+  <section>
+    <h2>Application</h2>
+    <dl>
+      <dt>ID</dt><dd id="id">—</dd>
+      <dt>Name</dt><dd id="name">—</dd>
+      <dt>Version</dt><dd id="version">—</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>API status</h2>
+    <div class="status"><span id="dot" class="dot bad"></span><span id="status">Checking…</span></div>
+    <div class="row" style="margin-top:14px">
+      <button id="open">Open Example URL</button>
+      <button id="notify" class="secondary">Send Notification</button>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+
+  <section>
+    <h2>Available API methods</h2>
+    <ul class="methods">
+      <li>ltf.app <small>— { id, name, version } (read-only)</small></li>
+      <li>ltf.ready() <small>— resolves when metadata is available</small></li>
+      <li>ltf.open(url) <small>— open an http(s) URL in Orion</small></li>
+      <li>ltf.notify(title, body) <small>— show an in-OS notification</small></li>
+    </ul>
+  </section>
+
+  <script>
+    var $ = function (id) { return document.getElementById(id); };
+    var log = function (m) { $('log').textContent = m; };
+    if (!window.ltf) {
+      $('status').textContent = 'window.ltf unavailable in this context';
+    } else {
+      window.ltf.ready().then(function (app) {
+        $('id').textContent = app.id || '(unknown)';
+        $('name').textContent = app.name || '(unknown)';
+        $('version').textContent = app.version || '(none)';
+        $('status').textContent = 'Ready';
+        $('dot').className = 'dot';
+      });
+      $('open').onclick = function () {
+        try { window.ltf.open('https://example.com/'); log('called ltf.open("https://example.com/")'); }
+        catch (e) { log('ltf.open error: ' + e.message); }
+      };
+      $('notify').onclick = function () {
+        window.ltf.notify('LTF API Playground', 'Notification sent at ' + new Date().toLocaleTimeString());
+        log('called ltf.notify(…)');
+      };
+    }
+  </script>
+</body>
+</html>

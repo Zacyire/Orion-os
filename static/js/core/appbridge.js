@@ -12,6 +12,17 @@
 // * The only data sent back to an app is its OWN public metadata (id, name,
 //   version). No window manager, registry, store, backend or other-app data is
 //   ever exposed. Inputs are validated (http(s) only) and length-capped.
+//
+// The request handlers are grouped by capability so new, equally safe APIs can
+// be added without touching the gate or the existing groups:
+//
+//   appbridge
+//     ├── metadata       — hello → the app's own { id, name, version }
+//     ├── navigation     — open(url) → Orion
+//     └── notifications  — notify(title, body) → toast
+//
+// Each handler receives (msg, ctx) where ctx = { source, app } and returns
+// nothing; adding a capability means adding one entry to `handlers`.
 
 import { wm } from './wm.js';
 import { registry } from './registry.js';
@@ -34,25 +45,46 @@ function senderApp(source) {
   return null;
 }
 
+// ── metadata ──────────────────────────────────────────────────────────────
+// Reply with the requesting app's OWN public metadata only. Nothing else about
+// the OS or other apps is ever disclosed.
+function handleHello(_msg, { source, app, appId }) {
+  source.postMessage(
+    { source: 'ltf-host', type: 'app', app: { id: appId, name: app?.name || appId, version: app?.version || null } },
+    location.origin,
+  );
+}
+
+// ── navigation ──────────────────────────────────────────────────────────────
+// Open an external URL in the Orion browser. http(s) only; anything else is
+// ignored (never a javascript:/data:/file: navigation).
+function handleOpen(msg) {
+  if (typeof msg.url === 'string' && /^https?:\/\//i.test(msg.url)) wm.open('orion', { url: msg.url });
+}
+
+// ── notifications ────────────────────────────────────────────────────────────
+// Show an in-OS toast. Title/body are coerced to strings and length-capped;
+// the title falls back to the app's name.
+function handleNotify(msg, { app }) {
+  const title = String(msg.title || '').slice(0, NOTIFY_TITLE_MAX) || (app?.name || 'App');
+  const body = String(msg.body || '').slice(0, NOTIFY_BODY_MAX);
+  notify(title, body);
+}
+
+const handlers = {
+  hello: handleHello,
+  open: handleOpen,
+  notify: handleNotify,
+};
+
 export function initAppBridge() {
   window.addEventListener('message', (e) => {
     const d = e.data;
     if (!d || d.source !== 'ltf-app') return;
     const ctx = senderApp(e.source);
     if (!ctx) return; // unknown / untrusted sender
-    const app = registry.get(ctx.appId);
-
-    if (d.type === 'hello') {
-      e.source.postMessage(
-        { source: 'ltf-host', type: 'app', app: { id: ctx.appId, name: app?.name || ctx.appId, version: app?.version || null } },
-        location.origin,
-      );
-    } else if (d.type === 'open') {
-      if (typeof d.url === 'string' && /^https?:\/\//i.test(d.url)) wm.open('orion', { url: d.url });
-    } else if (d.type === 'notify') {
-      const title = String(d.title || '').slice(0, NOTIFY_TITLE_MAX) || (app?.name || 'App');
-      const body = String(d.body || '').slice(0, NOTIFY_BODY_MAX);
-      notify(title, body);
-    }
+    const handler = handlers[d.type];
+    if (!handler) return;
+    handler(d, { source: e.source, appId: ctx.appId, app: registry.get(ctx.appId) });
   });
 }
