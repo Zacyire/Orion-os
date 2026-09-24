@@ -21,6 +21,12 @@ import { local } from './dom.js';
 
 let catalog = [];
 
+// LTF App Catalog: apps available to install, distinct from installed apps
+// (localStorage) and built-in apps (apps.json). Static for now; loadCatalog is
+// the single seam a remote catalog would later replace.
+let catalogApps = [];
+const catalogById = new Map();
+
 const USER_APPS_KEY = 'user-apps';
 /** User-created web apps, persisted in localStorage (Step 4). */
 function userApps() {
@@ -49,10 +55,16 @@ export function validateWebAppFields({ name, target, runtime, icon, iconUrl }) {
   }
   if (!/^https?:$/.test(url.protocol)) throw new Error('Only http:// and https:// URLs are supported.');
   const rt = RUNTIMES.includes(runtime) ? runtime : 'direct';
-  const rawIcon = (iconUrl || icon || '').trim();
-  if (rawIcon && !/^https?:\/\//i.test(rawIcon)) throw new Error('Icon URL must start with http:// or https://');
   const out = { name, target: url.href, runtime: rt };
-  if (rawIcon) out.iconUrl = rawIcon;
+  // Icon URL. `icon` may instead hold a glyph name (e.g. "globe") from a
+  // catalog entry — that is not a URL and is left untouched, not rejected.
+  const explicit = iconUrl != null ? String(iconUrl).trim() : '';
+  const iconIsUrl = typeof icon === 'string' && /^https?:\/\//i.test(icon.trim());
+  const raw = explicit || (iconIsUrl ? icon.trim() : '');
+  if (raw) {
+    if (!/^https?:\/\//i.test(raw)) throw new Error('Icon URL must start with http:// or https://');
+    out.iconUrl = raw;
+  }
   return out;
 }
 
@@ -109,7 +121,9 @@ export const registry = {
       if (!ua || !ua.id || byId.has(ua.id)) continue;
       let app;
       try {
-        app = normalize({ ...userManifest(ua.id, validateWebAppFields(ua)), custom: true, installed: true });
+        // Keep the stored manifest's extra fields (catalogId, description,
+        // version, icon) while enforcing validated core fields.
+        app = normalize({ ...ua, ...userManifest(ua.id, validateWebAppFields(ua)), custom: true, installed: true });
       } catch (e) {
         console.warn('[registry] skipping malformed user app', ua.id, e.message);
         continue;
@@ -117,9 +131,36 @@ export const registry = {
       catalog.push(app);
       byId.set(app.id, app);
     }
+    await this.loadCatalog();
     bus.emit('registry:changed');
     return catalog;
   },
+
+  /**
+   * Load the installable app catalog (static/catalog.json for now). Non-fatal:
+   * a missing/invalid catalog just yields an empty "Available" list. This is
+   * the single place a future remote catalog would hook in.
+   */
+  async loadCatalog() {
+    try {
+      const doc = await fetch('catalog.json').then((r) => (r.ok ? r.json() : null));
+      const apps = Array.isArray(doc?.apps) ? doc.apps : [];
+      catalogApps = apps.filter((a) => a && a.id && a.type === 'web-app');
+      catalogById.clear();
+      for (const a of catalogApps) catalogById.set(a.id, a);
+    } catch (e) {
+      console.warn('[registry] catalog unavailable', e.message);
+      catalogApps = [];
+      catalogById.clear();
+    }
+    return catalogApps;
+  },
+
+  /** Installable catalog entries, each tagged with its live install state. */
+  catalog() {
+    return catalogApps.map((a) => ({ ...a, installed: this.isInstalled(a.id) }));
+  },
+  catalogEntry: (id) => catalogById.get(id),
 
   /** Everything the user can see (internal hosts such as the game player are hidden). */
   all: () => catalog.filter((a) => !a.hidden),
@@ -171,10 +212,21 @@ export const registry = {
    *   { id, name, type: "web-app", runtime, target, iconUrl? }
    * `runtime` is the Step-3 field (direct | embed | external).
    */
-  createLocal(input) {
+  createLocal(input, opts = {}) {
     const fields = validateWebAppFields(input);
-    const stored = userApps();
-    const manifest = userManifest(uniqueId(fields.name), fields);
+    // opts.id fixes the app id (used when installing a catalog app so its
+    // identity matches the catalog entry). It must never overwrite a built-in.
+    let id = opts.id;
+    if (id) {
+      const existing = byId.get(id);
+      if (existing && !existing.local) throw new Error(`An app with the id "${id}" already exists.`);
+      if (existing && existing.local) return existing; // already installed — no duplicate
+    } else {
+      id = uniqueId(fields.name);
+    }
+    const manifest = { ...userManifest(id, fields), ...(opts.extra || {}) };
+    // Dedup by id so a fixed-id install can never leave two entries.
+    const stored = userApps().filter((a) => a.id !== id);
     stored.push(manifest);
     saveUserApps(stored);
 
@@ -183,6 +235,22 @@ export const registry = {
     byId.set(app.id, app);
     bus.emit('registry:changed', { id: app.id, installed: true });
     return app;
+  },
+
+  /**
+   * Install a catalog app. Reuses the single local-install path
+   * (validate → createLocal → localStorage); the installed app's id equals the
+   * catalog id, which is how installed/available state is later detected.
+   * Uninstalling removes only the local install; the catalog entry remains.
+   */
+  installFromCatalog(id) {
+    const entry = catalogById.get(id);
+    if (!entry) throw new Error('Unknown catalog app.');
+    if (byId.get(id)?.local) return byId.get(id); // already installed
+    return this.createLocal(
+      { name: entry.name, target: entry.target, runtime: entry.runtime, icon: entry.iconUrl },
+      { id, extra: { catalogId: id, description: entry.description, version: entry.version, icon: entry.icon } },
+    );
   },
 
   /**
@@ -195,7 +263,8 @@ export const registry = {
     const idx = stored.findIndex((a) => a && a.id === id);
     if (idx < 0) throw new Error('This app is not a user-created app.');
     const fields = validateWebAppFields(input);
-    const manifest = userManifest(id, fields);
+    // Preserve extra fields (catalogId, description, version, …) across edits.
+    const manifest = { ...stored[idx], ...userManifest(id, fields) };
     stored[idx] = manifest;
     saveUserApps(stored);
 

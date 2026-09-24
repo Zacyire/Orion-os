@@ -1,0 +1,66 @@
+{
+  "_readme": "LTF App Catalog — apps a user can install. Separate from installed apps (localStorage) and built-in apps (apps.json). Static for now; the loader (registry.loadCatalog) is structured so this could later come from a remote endpoint. Entry fields: id, name, description, type, runtime (direct|embed|external), target, iconUrl?, version, category?, publisher?. Use only sites appropriate for embedding; direct entries must permit framing, otherwise use external.",
+  "version": 1,
+  "apps": [
+    {
+      "id": "cat-example",
+      "name": "Example Site",
+      "description": "A minimal example website that permits embedding — a Direct-runtime demo.",
+      "type": "web-app",
+      "runtime": "direct",
+      "target": "https://example.com/",
+      "icon": "globe",
+      "version": "1.0.0",
+      "category": "Web",
+      "publisher": "IANA"
+    },
+    {
+      "id": "cat-blender-film",
+      "name": "Big Buck Bunny",
+      "description": "Blender open movie, played through YouTube's official privacy-enhanced embed player.",
+      "type": "web-app",
+      "runtime": "embed",
+      "target": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ",
+      "icon": "play2",
+      "version": "1.0.0",
+      "category": "Entertainment",
+      "publisher": "Blender Foundation"
+    },
+    {
+      "id": "cat-osm",
+      "name": "OpenStreetMap",
+      "description": "An embedded slippy map. © OpenStreetMap contributors.",
+      "type": "web-app",
+      "runtime": "embed",
+      "target": "https://www.openstreetmap.org/export/embed.html?bbox=-0.16%2C51.48%2C-0.06%2C51.52&layer=mapnik",
+      "icon": "globe",
+      "version": "1.0.0",
+      "category": "Web",
+      "publisher": "OpenStreetMap"
+    },
+    {
+      "id": "cat-wikipedia",
+      "name": "Wikipedia",
+      "description": "The free encyclopedia. Opens in Orion (External runtime).",
+      "type": "web-app",
+      "runtime": "external",
+      "target": "https://en.wikipedia.org/",
+      "icon": "globe",
+      "version": "1.0.0",
+      "category": "Reference",
+      "publisher": "Wikimedia Foundation"
+    },
+    {
+      "id": "cat-duckduckgo",
+      "name": "DuckDuckGo",
+      "description": "Privacy-focused web search. Opens in Orion (External runtime).",
+      "type": "web-app",
+      "runtime": "external",
+      "target": "https://duckduckgo.com/",
+      "icon": "search",
+      "version": "1.0.0",
+      "category": "Internet",
+      "publisher": "DuckDuckGo"
+    }
+  ]
+}

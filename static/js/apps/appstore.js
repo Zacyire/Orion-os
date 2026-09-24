@@ -39,6 +39,9 @@ export default {
         const pct = installing.get(app.id);
         return h('div.store-actions', h('div.install-bar', h('i', { style: { width: `${pct}%` } }), h('span', `Installing… ${pct}%`)));
       }
+      if (app.fromCatalog && !app.installed) {
+        return h('div.store-actions', h('button.btn.primary', { onclick: () => installCatalog(app) }, h('span', { html: icons.download }), 'Install'));
+      }
       if (!app.installed) {
         return h('div.store-actions', h('button.btn.primary', { onclick: () => install(app) }, h('span', { html: icons.download }), 'Get'));
       }
@@ -75,6 +78,26 @@ export default {
         ctx.notify('Install failed', e.message, { type: 'error' });
       }
       installing.delete(app.id);
+      draw();
+    }
+
+    // Install a catalog app through the single local-install path
+    // (registry.installFromCatalog → validate → createLocal → localStorage).
+    async function installCatalog(entry) {
+      installing.set(entry.id, 0);
+      draw();
+      for (let p = 0; p < 100; p += 25) {
+        installing.set(entry.id, p);
+        draw();
+        await new Promise((r) => setTimeout(r, 55));
+      }
+      try {
+        const app = registry.installFromCatalog(entry.id);
+        ctx.notify(`${app.name} installed`, 'Find it in Start, or drag it to the taskbar or desktop.', { type: 'success' });
+      } catch (e) {
+        ctx.notify('Install failed', e.message, { type: 'error' });
+      }
+      installing.delete(entry.id);
       draw();
     }
 
@@ -168,8 +191,15 @@ export default {
         hero.style.setProperty('--hero-b', b);
         const notInstalled = all.filter((x) => !x.installed);
         const web = all.filter((x) => x.custom);
+        // Catalog apps not yet installed (identity = catalog id, so installed
+        // entries drop out automatically — no duplicate Install).
+        const available = registry.catalog()
+          .filter((e) => !e.installed)
+          .map((e) => ({ ...e, module: 'webapp', fromCatalog: true, developer: e.publisher }));
         fill(main,
           hero,
+          available.length ? h('div.section-title', 'LTF App Catalog', h('small.muted', ' · available to install')) : null,
+          available.length ? h('div.store-grid', available.map(card)) : null,
           notInstalled.length ? h('div.section-title', 'Available to install') : null,
           notInstalled.length ? h('div.store-grid', notInstalled.map(card)) : null,
           h('div.section-title', 'Apps'), h('div.store-grid', all.filter((x) => !x.custom).map(card)),
