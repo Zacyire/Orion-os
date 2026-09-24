@@ -3,7 +3,8 @@
 // Every registry entry with "type": "web-app" is rendered by this module;
 // nothing app-specific lives here. Registry fields (static/apps.json):
 //
-//   runtime      how the target is loaded (default "direct"):
+//   runtime      how the target is loaded (default "direct"); ids are defined
+//                once in core/runtimes.js and dispatched via RUNTIME_HANDLERS:
 //                  "direct"   — load target in the existing sandboxed iframe
 //                  "embed"    — same container; target is a provider-supplied
 //                               embed URL (e.g. an official player)
@@ -22,13 +23,14 @@
 //   panel        module in apps/panels/ shown by the "panel" control
 //   suspendOnMinimize  unload the page while minimized to save memory/CPU
 //
-// Launch args override: { url, title, proxy, allow, size }.
+// Launch args override: { url, title, runtime, proxy, allow, size }.
 // There is deliberately no address bar, tab strip or history UI here —
 // Orion ("type": "browser") is the only general-purpose browser.
 
 import { h } from '../core/dom.js';
 import { icons } from '../core/icons.js';
 import { createFrame } from '../core/frame.js';
+import { RUNTIMES, normalizeRuntime } from '../core/runtimes.js';
 
 const FALLBACK_CODES = new Set(['EMBEDDING_NOT_ALLOWED', 'SITE_UNAVAILABLE', 'NETWORK_TIMEOUT']);
 
@@ -37,6 +39,27 @@ const siteOf = (url) => {
   try { return new URL(url).hostname.replace(/^www\./, '').split('.').slice(-2).join('.'); } catch { return ''; }
 };
 
+// ─── Runtime handlers ───────────────────────────────────────────────────────
+// One entry per id in core/runtimes.js. A handler's mount(env) renders into the
+// window body and returns the standard mount instance (onArgs, onFocus,
+// onMinimize, onRestore, destroy, …) that wm.js already drives — there is no
+// separate runtime lifecycle. env = { root, ctx, app, args, target, isolated }.
+//
+// `direct` and `embed` share the frame handler: embed is currently a semantic
+// label for "target is a provider embed URL", not a separate implementation
+// (docs/runtime-architecture-review.md). `proxy: "isolated"` is not a runtime —
+// it is passed to the frame handler as env.isolated and applied by frame.js.
+const RUNTIME_HANDLERS = {
+  direct: { mount: mountFrame },
+  embed: { mount: mountFrame },
+  external: { mount: mountExternal },
+};
+
+// Guard against a runtime being defined without a handler.
+for (const id of RUNTIMES) {
+  if (!Object.hasOwn(RUNTIME_HANDLERS, id)) console.error(`[webapp] no handler for runtime "${id}"`);
+}
+
 export default {
   // One window per web-app (like a native app); the hidden game host allows many.
   single: (app) => !app.hidden && app.single !== false,
@@ -44,114 +67,124 @@ export default {
   mount(root, ctx) {
     const app = ctx.app;
     const args = ctx.args || {};
-    const target = args.url || app.target;
-    const runtime = args.runtime || app.runtime || 'direct';
-    const isolated = args.proxy === true || args.proxy === 'isolated' || app.proxy === 'isolated';
-    let fallbackInstance = null;
-    let panel = null;
-
     if (args.title) ctx.win.setTitle(args.title);
 
-    // "external" runtime: never embed — present an Orion hand-off instead. Used
-    // for sites that decline framing, so the app degrades gracefully rather
-    // than showing a broken frame. No network request is made here.
-    if (runtime === 'external') return mountExternal();
-
-    function mountExternal() {
-      ctx.win.setControls([{ icon: 'external', title: 'Open in browser tab', onClick: () => window.open(target, '_blank', 'noopener') }]);
-      const container = h('div.app.webapp');
-      const host = (() => { try { return new URL(target).host; } catch { return target; } })();
-      container.append(h('div.frame-notice.frame-placeholder',
-        h('div.frame-error-icon', { html: icons.globe }),
-        h('h2', `${app.name} opens in Orion`),
-        h('p', 'This app is configured to open its site in the Orion browser, where full navigation is available.'),
-        h('code', host),
-        h('div.frame-actions',
-          h('button.btn.primary', { onclick: () => { ctx.open('orion', { url: target }); ctx.win.close(); } }, h('span', { html: icons.globe }), 'Open in Orion'),
-          h('button.btn', { onclick: () => window.open(target, '_blank', 'noopener') }, h('span', { html: icons.external }), 'Open in browser tab'),
-        ),
-      ));
-      root.append(container);
-      return {
-        onArgs(a) { if (a.url) ctx.open('orion', { url: a.url }); },
-      };
-    }
-
-    const frame = createFrame({
-      slot: `${app.id}.main`,
-      title: args.title || app.name,
-      allow: args.allow || app.allow,
-      sandbox: 'sandbox' in app ? app.sandbox : undefined,
-      onError: (code) => {
-        if (app.fallback && FALLBACK_CODES.has(code)) mountFallback();
-      },
-      // Isolated documents report navigation; keep the app on its own site.
-      onNavigate: (url) => {
-        if (app.navigation === 'none' || (siteOf(url) && siteOf(url) !== siteOf(target))) {
-          frame.load(target, { isolated, check: false });
-          if (app.navigation !== 'none') ctx.open('orion', { url });
-        }
-      },
-      onOpen: (url) => ctx.open('orion', { url }),
+    // Built-in and local apps take the same path: the manifest (or launch arg)
+    // runtime is normalized against the authoritative list, so an unknown or
+    // hostile value can only ever resolve to the default handler.
+    const runtime = normalizeRuntime(args.runtime || app.runtime);
+    const handler = Object.hasOwn(RUNTIME_HANDLERS, runtime) ? RUNTIME_HANDLERS[runtime] : RUNTIME_HANDLERS.direct;
+    return handler.mount({
+      root, ctx, app, args,
+      target: args.url || app.target,
+      isolated: args.proxy === true || args.proxy === 'isolated' || app.proxy === 'isolated',
     });
-
-    const container = h('div.app.webapp', frame.el);
-    root.append(container);
-
-    const CONTROL_DEFS = {
-      reload: { icon: 'refresh', title: 'Reload', onClick: () => frame.reload() },
-      home: { icon: 'home', title: 'Home', onClick: () => frame.load(target, { isolated }) },
-      external: { icon: 'external', title: 'Open in browser tab', onClick: () => window.open(frame.current.url || target, '_blank', 'noopener') },
-      panel: { icon: 'info', title: 'Details', onClick: (btn) => togglePanel(btn) },
-    };
-    ctx.win.setControls((app.controls || ['reload']).map((c) => CONTROL_DEFS[c]).filter(Boolean));
-
-    async function togglePanel(btn) {
-      if (panel) {
-        panel.destroy?.();
-        panel.el.remove();
-        panel = null;
-        btn?.classList.remove('active');
-        return;
-      }
-      const el = h('aside.webapp-panel');
-      container.append(el);
-      btn?.classList.add('active');
-      try {
-        const mod = await import(`./panels/${app.panel}.js`);
-        panel = { el, ...(mod.mountPanel(el, { ...ctx, frame, target, load: (url) => frame.load(url, { isolated }) }) || {}) };
-      } catch (err) {
-        el.textContent = `Panel unavailable: ${err.message}`;
-        panel = { el };
-      }
-    }
-
-    async function mountFallback() {
-      if (fallbackInstance) return;
-      try {
-        const mod = await import(`./${app.fallback}.js`);
-        frame.destroy();
-        container.remove();
-        ctx.win.setControls([{ icon: 'external', title: 'Open in browser tab', onClick: () => window.open(target, '_blank', 'noopener') }]);
-        const r = await mod.default.mount(root, ctx);
-        fallbackInstance = typeof r === 'function' ? { destroy: r } : r || {};
-      } catch (err) {
-        console.error('[webapp] fallback failed', err);
-      }
-    }
-
-    frame.load(target, { isolated });
-
-    return {
-      onArgs(a) { if (a.url) frame.load(a.url, { isolated }); fallbackInstance?.onArgs?.(a); },
-      onFocus() { frame.iframe?.focus(); fallbackInstance?.onFocus?.(); },
-      onMinimize() { if (app.suspendOnMinimize) frame.suspend(); },
-      onRestore() { if (app.suspendOnMinimize) frame.resume(); },
-      destroy() {
-        panel?.destroy?.();
-        fallbackInstance?.destroy?.();
-        frame.destroy();
-      },
-    };
   },
 };
+
+// "external" runtime: never embed — present an Orion hand-off instead. Used
+// for sites that decline framing, so the app degrades gracefully rather
+// than showing a broken frame. No network request is made here.
+function mountExternal({ root, ctx, app, target }) {
+  ctx.win.setControls([{ icon: 'external', title: 'Open in browser tab', onClick: () => window.open(target, '_blank', 'noopener') }]);
+  const container = h('div.app.webapp');
+  const host = (() => { try { return new URL(target).host; } catch { return target; } })();
+  container.append(h('div.frame-notice.frame-placeholder',
+    h('div.frame-error-icon', { html: icons.globe }),
+    h('h2', `${app.name} opens in Orion`),
+    h('p', 'This app is configured to open its site in the Orion browser, where full navigation is available.'),
+    h('code', host),
+    h('div.frame-actions',
+      h('button.btn.primary', { onclick: () => { ctx.open('orion', { url: target }); ctx.win.close(); } }, h('span', { html: icons.globe }), 'Open in Orion'),
+      h('button.btn', { onclick: () => window.open(target, '_blank', 'noopener') }, h('span', { html: icons.external }), 'Open in browser tab'),
+    ),
+  ));
+  root.append(container);
+  return {
+    onArgs(a) { if (a.url) ctx.open('orion', { url: a.url }); },
+  };
+}
+
+// "direct" / "embed" runtimes: the shared AppFrame (core/frame.js), which owns
+// preflight, sandboxing, error screens and the isolated /proxy/page transport.
+function mountFrame({ root, ctx, app, args, target, isolated }) {
+  let fallbackInstance = null;
+  let panel = null;
+
+  const frame = createFrame({
+    slot: `${app.id}.main`,
+    title: args.title || app.name,
+    allow: args.allow || app.allow,
+    sandbox: 'sandbox' in app ? app.sandbox : undefined,
+    onError: (code) => {
+      if (app.fallback && FALLBACK_CODES.has(code)) mountFallback();
+    },
+    // Isolated documents report navigation; keep the app on its own site.
+    onNavigate: (url) => {
+      if (app.navigation === 'none' || (siteOf(url) && siteOf(url) !== siteOf(target))) {
+        frame.load(target, { isolated, check: false });
+        if (app.navigation !== 'none') ctx.open('orion', { url });
+      }
+    },
+    onOpen: (url) => ctx.open('orion', { url }),
+  });
+
+  const container = h('div.app.webapp', frame.el);
+  root.append(container);
+
+  const CONTROL_DEFS = {
+    reload: { icon: 'refresh', title: 'Reload', onClick: () => frame.reload() },
+    home: { icon: 'home', title: 'Home', onClick: () => frame.load(target, { isolated }) },
+    external: { icon: 'external', title: 'Open in browser tab', onClick: () => window.open(frame.current.url || target, '_blank', 'noopener') },
+    panel: { icon: 'info', title: 'Details', onClick: (btn) => togglePanel(btn) },
+  };
+  ctx.win.setControls((app.controls || ['reload']).map((c) => CONTROL_DEFS[c]).filter(Boolean));
+
+  async function togglePanel(btn) {
+    if (panel) {
+      panel.destroy?.();
+      panel.el.remove();
+      panel = null;
+      btn?.classList.remove('active');
+      return;
+    }
+    const el = h('aside.webapp-panel');
+    container.append(el);
+    btn?.classList.add('active');
+    try {
+      const mod = await import(`./panels/${app.panel}.js`);
+      panel = { el, ...(mod.mountPanel(el, { ...ctx, frame, target, load: (url) => frame.load(url, { isolated }) }) || {}) };
+    } catch (err) {
+      el.textContent = `Panel unavailable: ${err.message}`;
+      panel = { el };
+    }
+  }
+
+  async function mountFallback() {
+    if (fallbackInstance) return;
+    try {
+      const mod = await import(`./${app.fallback}.js`);
+      frame.destroy();
+      container.remove();
+      ctx.win.setControls([{ icon: 'external', title: 'Open in browser tab', onClick: () => window.open(target, '_blank', 'noopener') }]);
+      const r = await mod.default.mount(root, ctx);
+      fallbackInstance = typeof r === 'function' ? { destroy: r } : r || {};
+    } catch (err) {
+      console.error('[webapp] fallback failed', err);
+    }
+  }
+
+  frame.load(target, { isolated });
+
+  return {
+    onArgs(a) { if (a.url) frame.load(a.url, { isolated }); fallbackInstance?.onArgs?.(a); },
+    onFocus() { frame.iframe?.focus(); fallbackInstance?.onFocus?.(); },
+    onMinimize() { if (app.suspendOnMinimize) frame.suspend(); },
+    onRestore() { if (app.suspendOnMinimize) frame.resume(); },
+    destroy() {
+      panel?.destroy?.();
+      fallbackInstance?.destroy?.();
+      frame.destroy();
+    },
+  };
+}

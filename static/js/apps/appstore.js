@@ -3,6 +3,7 @@ import { h, fill } from '../core/dom.js';
 import { icons, appIcon } from '../core/icons.js';
 import { registry, PERMISSIONS, PERMISSION_LABELS } from '../core/registry.js';
 import { taskbar } from '../core/taskbar.js';
+import { RUNTIME_DEFS, normalizeRuntime } from '../core/runtimes.js';
 
 const CATS = [
   { id: 'home', label: 'Home', icon: 'store' },
@@ -123,12 +124,9 @@ export default {
       const editing = !!existing;
       const name = h('input.field', { placeholder: 'e.g. Wikipedia', maxlength: 60, required: true, value: existing?.name || '' });
       const url = h('input.field', { type: 'url', placeholder: 'https://example.com/', required: true, value: existing?.target || '' });
-      const rt = existing?.runtime || 'direct';
+      const rt = normalizeRuntime(existing?.runtime);
       const runtime = h('select.field',
-        h('option', { value: 'direct', selected: rt === 'direct' }, 'Direct — show the site in the app window'),
-        h('option', { value: 'embed', selected: rt === 'embed' }, 'Embed — target is a provider embed URL'),
-        h('option', { value: 'external', selected: rt === 'external' }, 'External — open the site in Orion'),
-      );
+        RUNTIME_DEFS.map((r) => h('option', { value: r.id, selected: rt === r.id }, r.label)));
       const icon = h('input.field', { type: 'url', placeholder: 'https://…/icon.png (optional)', value: existing?.iconUrl || '' });
       // Permission checkboxes — one per currently supported capability. An app
       // only receives a capability if its box is checked (stored in the manifest).

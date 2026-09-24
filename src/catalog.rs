@@ -102,6 +102,27 @@ mod tests {
         assert!(find("netflix").is_some() && find("notnetflix").is_none());
     }
 
+    /// Built-in apps skip the frontend's local-app validation, so an unknown
+    /// `runtime` would silently fall back to "direct". Check every built-in
+    /// against the authoritative list in static/js/core/runtimes.js (parsed
+    /// here, so the ids are still defined in exactly one place).
+    #[test]
+    fn builtin_runtimes_are_defined() {
+        const RUNTIMES_JS: &str = include_str!("../static/js/core/runtimes.js");
+        let known: Vec<&str> = RUNTIMES_JS
+            .split("{ id: '")
+            .skip(1)
+            .filter_map(|s| s.split('\'').next())
+            .collect();
+        assert!(known.contains(&"direct") && known.contains(&"external"), "could not parse runtimes.js: {known:?}");
+        for a in all() {
+            if let Some(rt) = a.extra.get("runtime") {
+                let rt = rt.as_str().unwrap_or_default();
+                assert!(known.contains(&rt), "{}: runtime {rt:?} is not defined in runtimes.js {known:?}", a.id);
+            }
+        }
+    }
+
     #[test]
     fn minimal_entry_gets_defaults() {
         let a: CatalogApp = serde_json::from_str(r#"{ "id": "example", "name": "Example", "type": "web-app", "target": "https://example.com" }"#).unwrap();

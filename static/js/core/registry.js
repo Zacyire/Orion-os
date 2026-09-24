@@ -18,6 +18,7 @@
 import { api } from './api.js';
 import { bus } from './events.js';
 import { local } from './dom.js';
+import { normalizeRuntime } from './runtimes.js';
 
 let catalog = [];
 
@@ -36,7 +37,6 @@ function userApps() {
 function saveUserApps(list) {
   local.set(USER_APPS_KEY, list);
 }
-const RUNTIMES = ['direct', 'embed', 'external'];
 
 // App capability permissions (Step 10). Deliberately tiny: this is the seam a
 // future storage/clipboard/dialog/IPC permission would slot into. A permission
@@ -72,8 +72,8 @@ export function validateWebAppFields({ name, target, runtime, icon, iconUrl, per
     throw new Error('Enter a valid URL, including https://');
   }
   if (!/^https?:$/.test(url.protocol)) throw new Error('Only http:// and https:// URLs are supported.');
-  const rt = RUNTIMES.includes(runtime) ? runtime : 'direct';
-  const out = { name, target: url.href, runtime: rt, permissions: normalizePermissions(permissions) };
+  // Unknown/missing runtimes are sanitized to the default (core/runtimes.js).
+  const out = { name, target: url.href, runtime: normalizeRuntime(runtime), permissions: normalizePermissions(permissions) };
   // Icon URL. `icon` may instead hold a glyph name (e.g. "globe") from a
   // catalog entry — that is not a URL and is left untouched, not rejected.
   const explicit = iconUrl != null ? String(iconUrl).trim() : '';
@@ -236,7 +236,7 @@ export const registry = {
    * Create a web app from the OS itself and persist it in localStorage
    * (no backend). Produces a standard registry manifest:
    *   { id, name, type: "web-app", runtime, target, iconUrl? }
-   * `runtime` is the Step-3 field (direct | embed | external).
+   * `runtime` is one of the ids in core/runtimes.js (RUNTIMES).
    */
   createLocal(input, opts = {}) {
     const fields = validateWebAppFields(input);
