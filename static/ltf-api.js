@@ -21,9 +21,12 @@
   // capabilities regardless of what an app believes it has.
   var app = { id: null, name: null, version: null, permissions: [] };
   var waiters = [];
-  // Pending request/reply calls (storage), keyed by a per-frame request id.
+  // Pending request/reply calls (storage, window), keyed by a per-frame id.
   var pending = {};
   var reqSeq = 0;
+  // Window lifecycle listeners (ltf.window.onStateChange).
+  var winListeners = [];
+  var winSubscribed = false;
 
   function post(msg) {
     try { host.postMessage(Object.assign({ source: 'ltf-app' }, msg), '*'); } catch (e) { /* isolated */ }
@@ -54,11 +57,15 @@
       app.version = d.app.version;
       app.permissions = Array.isArray(d.app.permissions) ? d.app.permissions : [];
       waiters.splice(0).forEach(function (r) { r(app); });
-    } else if (d.type === 'storage-result' && d.rid && pending[d.rid]) {
+    } else if (d.rid && pending[d.rid]) {
+      // Any request/reply result (storage-result, window-result), matched by id.
       var p = pending[d.rid];
       delete pending[d.rid];
       if (d.ok) p.resolve(d.value === undefined ? null : d.value);
-      else p.reject(new Error(d.error || 'storage error'));
+      else p.reject(new Error(d.error || 'request failed'));
+    } else if (d.type === 'window-event' && d.state) {
+      // Lifecycle push for this window; deliver to all listeners.
+      winListeners.slice().forEach(function (cb) { try { cb(d.state); } catch (e) { /* listener threw */ } });
     }
   });
 
@@ -98,6 +105,44 @@
       remove: function (key) { return request('storage', { op: 'remove', key: String(key) }); },
       /** Resolves once this app's storage is cleared (its namespace only). */
       clear: function () { return request('storage', { op: 'clear' }); },
+    },
+
+    // Control and observe this app's OWN window. The host resolves the target
+    // window from this iframe, so an app can never reach another window.
+    // Requires the "window" permission — without it every call is rejected and
+    // no lifecycle events are delivered. All methods return Promises.
+    window: {
+      /** Resolves with { minimized, maximized, focused } for this window. */
+      getState: function () { return request('window', { op: 'getState' }); },
+      /** Minimize this window. Resolves with the resulting state. */
+      minimize: function () { return request('window', { op: 'minimize' }); },
+      /** Maximize this window. Resolves with the resulting state. */
+      maximize: function () { return request('window', { op: 'maximize' }); },
+      /** Restore this window (un-minimize/un-maximize). Resolves with the state. */
+      restore: function () { return request('window', { op: 'restore' }); },
+
+      /**
+       * Subscribe to this window's lifecycle changes (focus, minimize, maximize,
+       * restore). The callback receives the same shape as getState(). Returns an
+       * unsubscribe function; when the last listener is removed the host stops
+       * sending events. Listeners also die with the frame when the app closes.
+       */
+      onStateChange: function (callback) {
+        if (typeof callback !== 'function') return function () {};
+        winListeners.push(callback);
+        if (!winSubscribed) {
+          winSubscribed = true;
+          request('window', { op: 'subscribe' }).catch(function () { /* not permitted */ });
+        }
+        return function unsubscribe() {
+          var i = winListeners.indexOf(callback);
+          if (i >= 0) winListeners.splice(i, 1);
+          if (winListeners.length === 0 && winSubscribed) {
+            winSubscribed = false;
+            request('window', { op: 'unsubscribe' }).catch(function () {});
+          }
+        };
+      },
     },
   };
 

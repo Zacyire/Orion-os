@@ -42,11 +42,12 @@ const RUNTIMES = ['direct', 'embed', 'external'];
 // future storage/clipboard/dialog/IPC permission would slot into. A permission
 // is only ever granted by the app's manifest (host-controlled); an app can
 // never grant itself one from JavaScript.
-export const PERMISSIONS = ['notifications', 'open-external', 'storage'];
+export const PERMISSIONS = ['notifications', 'open-external', 'storage', 'window'];
 export const PERMISSION_LABELS = {
   notifications: 'Notifications',
   'open-external': 'Open external URLs',
   storage: 'Persistent storage',
+  window: 'Window control',
 };
 
 /** Normalize a manifest's permissions to a clean array of known ids (default []). */

@@ -173,7 +173,8 @@
     "permissions": [
       "notifications",
       "open-external",
-      "storage"
+      "storage",
+      "window"
     ],
     "controls": [
       "reload"

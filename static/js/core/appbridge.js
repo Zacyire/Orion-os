@@ -20,24 +20,38 @@
 //     ├── metadata       — hello → the app's own { id, name, version, permissions }
 //     ├── navigation     — open(url) → Orion          [requires "open-external"]
 //     ├── notifications  — notify(title, body) → toast [requires "notifications"]
-//     └── storage        — get/set/remove/clear        [requires "storage"]
+//     ├── storage        — get/set/remove/clear        [requires "storage"]
+//     └── window         — getState/min/max/restore +  [requires "window"]
+//                          onStateChange lifecycle events for the app's OWN window
 //
-// Each entry is { perm?, run(msg, ctx) } where ctx = { source, appId, app,
-// granted }. `granted` is computed centrally from the calling app's MANIFEST
-// permissions (host-controlled registry, never the message). Fire-and-forget
-// handlers (notify/open) simply return when not granted; request/reply handlers
-// (storage) send a safe rejection instead. Adding a capability means adding one
-// entry — the gate and permission source are shared.
+// Each entry is { perm?, run(msg, ctx) } where ctx = { source, appId, winId,
+// app, granted }. `granted` is computed centrally from the calling app's
+// MANIFEST permissions (host-controlled registry, never the message). Both the
+// app id AND the target window are resolved by the host from the sending iframe
+// (senderApp) — an app can never name another app or another window. Adding a
+// capability means adding one entry — the gate and permission source are shared.
 
 import { wm } from './wm.js';
 import { registry } from './registry.js';
 import { notify } from './notify.js';
+import { bus } from './events.js';
 import { appStorage, validKey } from './appstorage.js';
 
 const NOTIFY_TITLE_MAX = 120;
 const NOTIFY_BODY_MAX = 400;
 
-/** Resolve the first-party app frame that sent a message, or null. */
+// Windows subscribed to lifecycle events, keyed by the HOST window id:
+//   winId → { source: iframe contentWindow, last: "min|max|focus" signature }
+// Pruned automatically when a window no longer exists (see the wm:changed hook),
+// so a closed app leaves no dangling listener.
+const winSubs = new Map();
+
+/**
+ * Resolve the first-party app frame that sent a message, or null. Returns both
+ * the registered app id and the HOST window id that owns the iframe — the app
+ * never supplies either, so it can neither impersonate another app nor act on
+ * another window.
+ */
 function senderApp(source) {
   for (const iframe of document.querySelectorAll('#windows .window iframe')) {
     if (iframe.contentWindow !== source) continue;
@@ -45,8 +59,10 @@ function senderApp(source) {
     let sameOrigin = false;
     try { sameOrigin = new URL(src, location.href).origin === location.origin; } catch { /* opaque */ }
     if (!sameOrigin || src.startsWith('/proxy/')) return null; // not a first-party app frame
-    const appId = iframe.closest('.window')?.dataset.app;
-    return appId ? { appId } : null;
+    const winEl = iframe.closest('.window');
+    const appId = winEl?.dataset.app;
+    const winId = winEl?.dataset.id;
+    return appId ? { appId, winId } : null;
   }
   return null;
 }
@@ -128,6 +144,50 @@ function handleStorage(msg, { source, appId, granted }) {
   }
 }
 
+// ── window ───────────────────────────────────────────────────────────────
+// Lifecycle state + control for the app's OWN window. The target window is the
+// host-resolved `winId` (from the sending iframe); an app-supplied window/app id
+// is never honored. State is read via wm.stateOf() — no element, instance or
+// internal WM object is ever exposed. Actions reuse the existing WM operations,
+// so normal window behavior is unchanged.
+function handleWindow(msg, { source, winId, granted }) {
+  const rid = msg.rid;
+  const reply = (ok, value, error) =>
+    source.postMessage({ source: 'ltf-host', type: 'window-result', rid, ok, value, error }, location.origin);
+
+  if (!granted) return reply(false, undefined, 'permission denied: window');
+  const state = wm.stateOf(winId);
+  if (!state) return reply(false, undefined, 'no window'); // no window owns this frame
+
+  switch (msg.op) {
+    case 'getState':
+      return reply(true, state);
+    case 'minimize':
+      wm.minimize(winId);
+      return reply(true, wm.stateOf(winId));
+    case 'maximize':
+      if (state.minimized) wm.restore(winId);         // make visible first
+      if (!wm.stateOf(winId).maximized) wm.toggleMaximize(winId);
+      return reply(true, wm.stateOf(winId));
+    case 'restore':
+      if (state.minimized) wm.restore(winId);         // un-minimize (+ focus)
+      else if (state.maximized) wm.toggleMaximize(winId); // un-maximize
+      return reply(true, wm.stateOf(winId));
+    case 'subscribe':
+      // Track this window for lifecycle events. Only first-party frames reach
+      // here (senderApp gate), so cross-origin/proxy frames never subscribe.
+      winSubs.set(winId, { source, last: signature(state) });
+      return reply(true, state);
+    case 'unsubscribe':
+      winSubs.delete(winId);
+      return reply(true, true);
+    default:
+      return reply(false, undefined, 'unknown window op');
+  }
+}
+
+const signature = (s) => `${s.minimized}|${s.maximized}|${s.focused}`;
+
 // A handler may declare a required capability (`perm`); `granted` is computed
 // centrally and passed in. `hello` needs none.
 const handlers = {
@@ -135,6 +195,7 @@ const handlers = {
   open: { perm: 'open-external', run: handleOpen },
   notify: { perm: 'notifications', run: handleNotify },
   storage: { perm: 'storage', run: handleStorage },
+  window: { perm: 'window', run: handleWindow },
 };
 
 export function initAppBridge() {
@@ -148,6 +209,26 @@ export function initAppBridge() {
     // Permission comes from the host-controlled manifest, never the message, so
     // an app can never grant itself a capability.
     const granted = !handler.perm || registry.hasPermission(ctx.appId, handler.perm);
-    handler.run(d, { source: e.source, appId: ctx.appId, app: registry.get(ctx.appId), granted });
+    handler.run(d, { source: e.source, appId: ctx.appId, winId: ctx.winId, app: registry.get(ctx.appId), granted });
   });
+
+  // Lifecycle events: the WM already emits `wm:changed` on every focus /
+  // minimize / maximize / restore / close transition. For each subscribed
+  // window we diff its state and push an event to that window's own iframe.
+  // A window that no longer exists is pruned here — this is the cleanup path
+  // that prevents leaked listeners after an app is closed.
+  bus.on('wm:changed', () => {
+    for (const [winId, sub] of winSubs) {
+      const st = wm.stateOf(winId);
+      if (!st) { winSubs.delete(winId); continue; } // window gone → clean up
+      const sig = signature(st);
+      if (sig === sub.last) continue;
+      sub.last = sig;
+      try { sub.source.postMessage({ source: 'ltf-host', type: 'window-event', state: st }, location.origin); } catch { /* frame gone */ }
+    }
+  });
+
+  // Top-window-only introspection for host-side tests. NOT reachable from any
+  // app iframe (it lives on the OS window, which apps are cross-origin to).
+  window.__ltfBridge = { windowSubscriptionCount: () => winSubs.size };
 }

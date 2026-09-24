@@ -93,6 +93,27 @@
   </section>
 
   <section>
+    <div class="cap-head"><h2>Window</h2><span id="cap-window-pill" class="pill off">checking…</span></div>
+    <ul class="methods" style="margin-bottom:14px">
+      <li>ltf.window.getState() <small>— { minimized, maximized, focused }</small></li>
+      <li>ltf.window.minimize() / maximize() / restore()</li>
+      <li>ltf.window.onStateChange(cb) <small>— returns unsubscribe()</small></li>
+    </ul>
+    <dl>
+      <dt>Focused</dt><dd id="w-focused">—</dd>
+      <dt>Minimized</dt><dd id="w-minimized">—</dd>
+      <dt>Maximized</dt><dd id="w-maximized">—</dd>
+    </dl>
+    <div class="row" style="margin-top:14px">
+      <button id="w-min" class="secondary">Minimize</button>
+      <button id="w-max" class="secondary">Maximize</button>
+      <button id="w-restore" class="secondary">Restore</button>
+      <button id="w-refresh">Refresh State</button>
+    </div>
+    <div class="out" id="w-log">onStateChange events appear here…</div>
+  </section>
+
+  <section>
     <h2>Available API methods</h2>
     <ul class="methods">
       <li>ltf.app <small>— { id, name, version, permissions } (read-only)</small></li>
@@ -107,9 +128,21 @@
     var log = function (m) { $('log').textContent = m; };
     // Labels for the two currently supported capabilities. The host enforces
     // these; the app only reads its granted list to reflect state in the UI.
-    var PERM_LABELS = { notifications: 'Notifications', 'open-external': 'Open external URLs', storage: 'Persistent storage' };
-    var ALL_PERMS = ['notifications', 'open-external', 'storage'];
+    var PERM_LABELS = { notifications: 'Notifications', 'open-external': 'Open external URLs', storage: 'Persistent storage', window: 'Window control' };
+    var ALL_PERMS = ['notifications', 'open-external', 'storage', 'window'];
     var out = function (m) { $('st-out').textContent = m; };
+    var yn = function (b) { return b ? 'Yes' : 'No'; };
+    function renderState(s) {
+      if (!s) return;
+      $('w-focused').textContent = yn(s.focused);
+      $('w-minimized').textContent = yn(s.minimized);
+      $('w-maximized').textContent = yn(s.maximized);
+    }
+    function wlog(m) {
+      var el = $('w-log');
+      var now = new Date().toLocaleTimeString();
+      el.textContent = (now + '  ' + m + '\n' + el.textContent).split('\n').slice(0, 8).join('\n');
+    }
 
     function renderPerms(perms) {
       var granted = {};
@@ -136,10 +169,16 @@
       $('notify').disabled = !granted['notifications'];
       // Storage capability pill + interactive buttons.
       var storageOk = !!granted['storage'];
-      var pill = $('cap-storage-pill');
-      pill.className = 'pill ' + (storageOk ? 'on' : 'off');
-      pill.textContent = storageOk ? 'permitted' : 'blocked';
+      var sPill = $('cap-storage-pill');
+      sPill.className = 'pill ' + (storageOk ? 'on' : 'off');
+      sPill.textContent = storageOk ? 'permitted' : 'blocked';
       ['st-set', 'st-get', 'st-remove', 'st-clear'].forEach(function (id) { $(id).disabled = !storageOk; });
+      // Window capability pill + interactive buttons.
+      var windowOk = !!granted['window'];
+      var wPill = $('cap-window-pill');
+      wPill.className = 'pill ' + (windowOk ? 'on' : 'off');
+      wPill.textContent = windowOk ? 'permitted' : 'blocked';
+      ['w-min', 'w-max', 'w-restore', 'w-refresh'].forEach(function (id) { $(id).disabled = !windowOk; });
     }
 
     if (!window.ltf) {
@@ -186,6 +225,22 @@
           .then(function () { out('clear() → this app\'s storage cleared'); })
           .catch(function (e) { out('clear error: ' + e.message); });
       };
+
+      // Window lifecycle tests.
+      var refresh = function () { window.ltf.window.getState().then(renderState).catch(function () {}); };
+      $('w-refresh').onclick = refresh;
+      $('w-min').onclick = function () { window.ltf.window.minimize().then(renderState).catch(function (e) { wlog('minimize error: ' + e.message); }); };
+      $('w-max').onclick = function () { window.ltf.window.maximize().then(renderState).catch(function (e) { wlog('maximize error: ' + e.message); }); };
+      $('w-restore').onclick = function () { window.ltf.window.restore().then(renderState).catch(function (e) { wlog('restore error: ' + e.message); }); };
+      // Subscribe to lifecycle changes (only meaningful with the window
+      // permission; otherwise no events arrive). Listener is cleaned up by the
+      // host when this app closes.
+      window.ltf.window.onStateChange(function (s) {
+        renderState(s);
+        wlog('state → focused=' + yn(s.focused) + ' min=' + yn(s.minimized) + ' max=' + yn(s.maximized));
+      });
+      // Show initial state once metadata (and thus permissions) are ready.
+      refresh();
     }
   </script>
 </body>

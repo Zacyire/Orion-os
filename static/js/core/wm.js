@@ -49,6 +49,17 @@ class WindowManager {
     return this.list.filter((w) => w.appId === appId);
   }
 
+  /**
+   * Public, read-only lifecycle state for one window, by id — the only window
+   * detail the app bridge ever exposes to an app (about its OWN window). Returns
+   * null for an unknown id. No element, instance or internal object is leaked.
+   */
+  stateOf(id) {
+    const w = this.windows.get(id);
+    if (!w) return null;
+    return { minimized: !!w.minimized, maximized: !!w.maximized, focused: this.focusedId === id };
+  }
+
   /** Launch an app (or focus it when the module is single-instance). */
   async open(appId, args = {}) {
     const app = registry.get(appId);
