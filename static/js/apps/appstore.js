@@ -21,6 +21,7 @@ export default {
   mount(root, ctx) {
     let cat = 'home';
     let query = '';
+    let catCat = 'all'; // catalog category filter (Home view), generated from catalog data
     let focusId = ctx.args.focus || null;
     const installing = new Map(); // id → progress 0..100
 
@@ -165,47 +166,80 @@ export default {
       if (el) el.replaceWith(card(registry.get(id)));
     }
 
+    // Catalog discovery controls (Home): category chips generated from catalog
+    // data + a Clear action. The search box (query) is the toolbar field.
+    function catalogControls(catalogAll) {
+      const cats = [...new Set(catalogAll.map((e) => e.category).filter(Boolean))].sort();
+      const chip = (id, label) => {
+        const b = h(`button.store-cat${catCat === id ? '.active' : ''}`, label);
+        b.addEventListener('click', () => { catCat = id; draw(); });
+        return b;
+      };
+      const active = !!query || catCat !== 'all';
+      return h('div.store-controls',
+        h('div.store-cats', chip('all', 'All'), ...cats.map((c) => chip(c, c))),
+        active ? h('button.btn.ghost.store-clear', { onclick: () => { catCat = 'all'; search.value = ''; query = ''; draw(); } }, 'Clear filters') : null,
+      );
+    }
+
+    // Case-insensitive catalog match over name, description, publisher, category.
+    function matchesCatalog(e) {
+      if (catCat !== 'all' && e.category !== catCat) return false;
+      if (!query) return true;
+      return `${e.name} ${e.description || ''} ${e.publisher || ''} ${e.category || ''}`.toLowerCase().includes(query);
+    }
+
+    function renderHome(all) {
+      const featured = registry.get('geforcenow') || all[0];
+      const [a, b] = ['#1c3a05', '#0b1402'];
+      const hero = h('section.store-hero', { style: { '--hero-a': a, '--hero-b': b } },
+        appIcon(featured, 'xl'),
+        h('div', h('small', { style: { textTransform: 'uppercase', letterSpacing: '.1em', opacity: 0.8 } }, 'Featured'),
+          h('h2', featured.name), h('p', featured.description), actions(featured)),
+      );
+      hero.style.setProperty('--hero-a', a);
+      hero.style.setProperty('--hero-b', b);
+
+      // Catalog Available = catalog entries not installed (identity = catalog id,
+      // so installed entries drop out — never mixed back into Available).
+      const catalogAll = registry.catalog();
+      const available = catalogAll.filter((e) => !e.installed).map((e) => ({ ...e, module: 'webapp', fromCatalog: true, developer: e.publisher }));
+      const filtered = available.filter(matchesCatalog);
+      let catalogBody;
+      if (filtered.length) catalogBody = h('div.store-grid', filtered.map(card));
+      else {
+        const msg = available.length === 0 ? 'Everything in the catalog is installed.'
+          : query ? `No catalog apps match “${query}”.`
+          : `No catalog apps in “${catCat}”.`;
+        catalogBody = h('div.empty', msg);
+      }
+
+      const web = all.filter((x) => x.custom);
+      fill(main,
+        hero,
+        catalogAll.length ? h('div.section-title', 'LTF App Catalog', h('small.muted', ' · available to install')) : null,
+        catalogAll.length ? catalogControls(catalogAll) : null,
+        catalogAll.length ? catalogBody : null,
+        h('div.section-title', 'Apps'), h('div.store-grid', all.filter((x) => !x.custom).map(card)),
+        h('div.section-title', 'Your web apps'),
+        web.length ? h('div.store-grid', web.map(card)) : h('div.card.muted', 'Turn any website into a desktop app with “Add web app”. It opens in its own window without browser controls and can be pinned to the taskbar. Sites that don’t allow embedding show an explanation instead.'),
+      );
+    }
+
     function draw() {
       nav.replaceChildren(...CATS.map((c) => {
         const b = h(`button.nav-item${cat === c.id ? '.active' : ''}`, { html: icons[c.icon] }, c.label);
-        b.addEventListener('click', () => { cat = c.id; focusId = null; search.value = query = ''; draw(); });
+        b.addEventListener('click', () => { cat = c.id; focusId = null; catCat = 'all'; search.value = query = ''; draw(); });
         return b;
       }));
 
       const all = registry.all();
-      if (query) {
+      if (cat === 'home') {
+        renderHome(all);
+      } else if (query) {
+        // Existing per-store search for the non-Home tabs.
         const hits = all.filter((a) => `${a.name} ${a.description} ${a.category} ${a.developer}`.toLowerCase().includes(query));
         main.replaceChildren(h('h1.page-title', `Results for “${query}”`), hits.length ? h('div.store-grid', hits.map(card)) : h('div.empty', 'Nothing found.'));
-        return;
-      }
-
-      if (cat === 'home') {
-        const featured = registry.get('geforcenow') || all[0];
-        const [a, b] = ['#1c3a05', '#0b1402'];
-        const hero = h('section.store-hero', { style: { '--hero-a': a, '--hero-b': b } },
-          appIcon(featured, 'xl'),
-          h('div', h('small', { style: { textTransform: 'uppercase', letterSpacing: '.1em', opacity: 0.8 } }, 'Featured'),
-            h('h2', featured.name), h('p', featured.description), actions(featured)),
-        );
-        hero.style.setProperty('--hero-a', a);
-        hero.style.setProperty('--hero-b', b);
-        const notInstalled = all.filter((x) => !x.installed);
-        const web = all.filter((x) => x.custom);
-        // Catalog apps not yet installed (identity = catalog id, so installed
-        // entries drop out automatically — no duplicate Install).
-        const available = registry.catalog()
-          .filter((e) => !e.installed)
-          .map((e) => ({ ...e, module: 'webapp', fromCatalog: true, developer: e.publisher }));
-        fill(main,
-          hero,
-          available.length ? h('div.section-title', 'LTF App Catalog', h('small.muted', ' · available to install')) : null,
-          available.length ? h('div.store-grid', available.map(card)) : null,
-          notInstalled.length ? h('div.section-title', 'Available to install') : null,
-          notInstalled.length ? h('div.store-grid', notInstalled.map(card)) : null,
-          h('div.section-title', 'Apps'), h('div.store-grid', all.filter((x) => !x.custom).map(card)),
-          h('div.section-title', 'Your web apps'),
-          web.length ? h('div.store-grid', web.map(card)) : h('div.card.muted', 'Turn any website into a desktop app with “Add web app”. It opens in its own window without browser controls and can be pinned to the taskbar. Sites that don’t allow embedding show an explanation instead.'),
-        );
       } else if (cat === 'library') {
         const mine = all.filter((x) => x.installed);
         main.replaceChildren(h('h1.page-title', 'Library'), h('p.muted', `${mine.length} apps installed`), h('div.store-grid', mine.map(card)));

@@ -28,3 +28,11 @@
 .store-dialog label { display: grid; gap: 4px; font-size: var(--fs-sm); color: var(--text-2); }
 .store-dialog label.row { display: flex; align-items: center; gap: 12px; }
 .store-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+/* Catalog discovery controls (search uses the toolbar field; chips below) */
+.store-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 14px; }
+.store-cats { display: flex; gap: 6px; flex-wrap: wrap; }
+.store-cat { padding: 5px 12px; border-radius: 14px; font-size: var(--fs-sm); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); transition: background var(--dur-fast), color var(--dur-fast); }
+.store-cat:hover { background: var(--surface-hover); color: var(--text); }
+.store-cat.active { background: var(--accent-color-soft); border-color: var(--accent-color); color: var(--accent-color-strong); }
+.store-clear { margin-left: auto; height: 30px; }
