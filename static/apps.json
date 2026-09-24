@@ -1,88 +1,177 @@
 [
   {
-    "id": "orion", "name": "Orion", "type": "browser", "icon": "orion", "category": "Internet",
+    "id": "orion",
+    "name": "Orion",
+    "type": "browser",
+    "icon": "orion",
+    "category": "Internet",
     "description": "General-purpose web browser with tabs, history and bookmarks.",
-    "developer": "LTF", "default_size": [1180, 740],
-    "navigation": "full", "addressBar": true, "browserControls": true, "tabs": true, "proxy": "optional"
+    "developer": "LTF",
+    "default_size": [
+      1180,
+      740
+    ],
+    "navigation": "full",
+    "addressBar": true,
+    "browserControls": true,
+    "tabs": true,
+    "proxy": "optional"
   },
   {
-    "id": "netflix", "name": "Netflix", "type": "web-app", "icon": "netflix", "category": "Entertainment",
+    "id": "netflix",
+    "name": "Netflix",
+    "type": "web-app",
+    "icon": "netflix",
+    "category": "Entertainment",
     "description": "Streaming, as a dedicated app window.",
-    "developer": "LTF", "default_size": [1200, 740],
+    "developer": "LTF",
+    "default_size": [
+      1200,
+      740
+    ],
     "target": "https://cinejoy.pk/",
-    "navigation": "limited", "addressBar": false, "browserControls": false,
-    "controls": ["reload", "home", "external"]
+    "navigation": "limited",
+    "addressBar": false,
+    "browserControls": false,
+    "controls": [
+      "reload",
+      "home",
+      "external"
+    ]
   },
   {
-    "id": "youtube", "name": "YouTube", "type": "web-app", "icon": "youtube", "category": "Entertainment",
+    "id": "youtube",
+    "name": "YouTube",
+    "type": "web-app",
+    "icon": "youtube",
+    "category": "Entertainment",
     "description": "YouTube as a dedicated app. youtube.com forbids embedding, so the app falls back to YouTube’s official embed player and Data API.",
-    "developer": "LTF", "default_size": [1180, 720],
+    "developer": "LTF",
+    "default_size": [
+      1180,
+      720
+    ],
     "target": "https://www.youtube.com/",
-    "navigation": "limited", "addressBar": false, "browserControls": false,
-    "controls": ["reload", "home", "external"],
+    "navigation": "limited",
+    "addressBar": false,
+    "browserControls": false,
+    "controls": [
+      "reload",
+      "home",
+      "external"
+    ],
     "fallback": "youtube"
   },
   {
-    "id": "geforcenow", "name": "GeForce NOW", "type": "web-app", "icon": "geforcenow", "category": "Games",
+    "id": "geforcenow",
+    "name": "GeForce NOW",
+    "type": "web-app",
+    "icon": "geforcenow",
+    "category": "Games",
     "description": "Cloud gaming portal with gamepad, fullscreen and keyboard access, plus connection diagnostics.",
-    "developer": "LTF", "default_size": [1280, 760],
+    "developer": "LTF",
+    "default_size": [
+      1280,
+      760
+    ],
     "target": "https://play.geforcenow.com/",
-    "navigation": "limited", "addressBar": false, "browserControls": false,
-    "controls": ["reload", "home", "external", "panel"],
+    "navigation": "limited",
+    "addressBar": false,
+    "browserControls": false,
+    "controls": [
+      "reload",
+      "home",
+      "external",
+      "panel"
+    ],
     "panel": "geforcenow",
     "allow": "autoplay; fullscreen; gamepad; keyboard-map; clipboard-read; clipboard-write; microphone; camera",
     "sandbox": null
   },
   {
-    "id": "spiceify", "name": "Spiceify", "module": "spiceify", "icon": "spiceify", "category": "Entertainment",
+    "id": "spiceify",
+    "name": "Spiceify",
+    "module": "spiceify",
+    "icon": "spiceify",
+    "category": "Entertainment",
     "description": "Music player for audio files and streaming-service embeds. Library defined in content/music.json.",
-    "developer": "LTF", "default_size": [1080, 680]
+    "developer": "LTF",
+    "default_size": [
+      1080,
+      680
+    ]
   },
   {
-    "id": "vapor", "name": "Vapor", "module": "vapor", "icon": "vapor", "category": "Games",
+    "id": "vapor",
+    "name": "Vapor",
+    "module": "vapor",
+    "icon": "vapor",
+    "category": "Games",
     "description": "Game store and library. Launches HTML5 and web-hosted games in their own windows. Catalogue in content/games.json.",
-    "developer": "LTF", "default_size": [1180, 720]
+    "developer": "LTF",
+    "default_size": [
+      1180,
+      720
+    ]
   },
   {
-    "id": "appstore", "name": "App Store", "module": "appstore", "icon": "store", "category": "System",
+    "id": "appstore",
+    "name": "App Store",
+    "module": "appstore",
+    "icon": "store",
+    "category": "System",
     "description": "Install, remove and launch apps, or turn any website into an app.",
-    "developer": "LTF", "system": true, "default_size": [1040, 660]
+    "developer": "LTF",
+    "system": true,
+    "default_size": [
+      1040,
+      660
+    ]
   },
   {
-    "id": "notepad", "name": "Notepad", "module": "notepad", "icon": "notepad", "category": "Productivity",
+    "id": "notepad",
+    "name": "Notepad",
+    "module": "notepad",
+    "icon": "notepad",
+    "category": "Productivity",
     "description": "Text and Markdown editor with server-side storage, upload and download.",
-    "developer": "LTF", "default_size": [860, 580]
+    "developer": "LTF",
+    "default_size": [
+      860,
+      580
+    ]
   },
   {
-    "id": "settings", "name": "Settings", "module": "settings", "icon": "settings", "category": "System",
+    "id": "settings",
+    "name": "Settings",
+    "module": "settings",
+    "icon": "settings",
+    "category": "System",
     "description": "Personalization, wallpaper, taskbar position, accounts and system information.",
-    "developer": "LTF", "system": true, "default_size": [920, 620]
+    "developer": "LTF",
+    "system": true,
+    "default_size": [
+      920,
+      620
+    ]
   },
   {
-    "id": "test-direct", "name": "Direct Test", "type": "web-app", "runtime": "direct", "icon": "globe", "category": "System",
-    "description": "Temporary: runtime=direct loads example.com in the existing sandboxed iframe.",
-    "developer": "LTF", "default_size": [1000, 700],
-    "target": "https://example.com/",
-    "controls": ["reload", "home", "external"]
-  },
-  {
-    "id": "test-embed", "name": "Embed Test", "type": "web-app", "runtime": "embed", "icon": "globe", "category": "System",
-    "description": "Temporary: runtime=embed loads an official provider embed (YouTube privacy-enhanced player).",
-    "developer": "LTF", "default_size": [1000, 640],
-    "target": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ",
-    "allow": "accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen",
-    "controls": ["reload", "external"]
-  },
-  {
-    "id": "test-external", "name": "External Test", "type": "web-app", "runtime": "external", "icon": "globe", "category": "System",
-    "description": "Temporary: runtime=external — a site that refuses framing; opens in Orion instead.",
-    "developer": "LTF", "default_size": [900, 620],
-    "target": "https://www.google.com/"
-  },
-  {
-    "id": "webplayer", "name": "Vapor Player", "type": "web-app", "icon": "vapor", "category": "Games",
+    "id": "webplayer",
+    "name": "Vapor Player",
+    "type": "web-app",
+    "icon": "vapor",
+    "category": "Games",
     "description": "Window host for games launched from Vapor.",
-    "developer": "LTF", "system": true, "hidden": true, "default_size": [900, 640],
-    "controls": ["reload"], "suspendOnMinimize": true
+    "developer": "LTF",
+    "system": true,
+    "hidden": true,
+    "default_size": [
+      900,
+      640
+    ],
+    "controls": [
+      "reload"
+    ],
+    "suspendOnMinimize": true
   }
 ]

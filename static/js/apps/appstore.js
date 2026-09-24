@@ -44,7 +44,9 @@ export default {
       }
       return h('div.store-actions',
         h('button.btn.primary', { onclick: () => ctx.open(app.id) }, 'Open'),
-        app.system ? null : h('button.btn', { title: app.custom ? 'Remove' : 'Uninstall', onclick: () => uninstall(app), html: icons.trash }),
+        // Edit is exposed only for user-created (local) web apps.
+        app.local ? h('button.btn', { title: 'Edit', onclick: () => webAppDialog(app), html: icons.edit }) : null,
+        app.system ? null : h('button.btn', { title: app.local ? 'Remove' : 'Uninstall', onclick: () => uninstall(app), html: icons.trash }),
       );
     }
 
@@ -52,7 +54,7 @@ export default {
       return h(`article.store-card${focusId === app.id ? '.highlight' : ''}`, { dataset: { id: app.id } },
         h('header', appIcon(app, 'md'), h('div', h('h4', app.name), h('small.muted', app.developer))),
         h('p', app.description),
-        h('div.store-meta', h('span', app.category), h('span', app.custom ? 'Web app' : `v${app.version}`), app.installed ? h('span.chip.accent', 'Installed') : null),
+        h('div.store-meta', h('span', app.category), app.local ? h('span.chip', 'Your web app') : h('span', `v${app.version}`), app.installed ? h('span.chip.accent', 'Installed') : null),
         actions(app),
       );
     }
@@ -77,6 +79,8 @@ export default {
     }
 
     async function uninstall(app) {
+      // Match the existing confirm pattern used for destructive actions.
+      if (app.local && !confirm(`Remove “${app.name}”? This deletes the app from this browser.`)) return;
       try {
         ctx.bus.emit('wm:close-app', app.id);
         await registry.uninstall(app.id);
@@ -88,18 +92,23 @@ export default {
       draw();
     }
 
-    function addWebApp() {
-      const name = h('input.field', { placeholder: 'e.g. Wikipedia', maxlength: 40, required: true });
-      const url = h('input.field', { type: 'url', placeholder: 'https://example.com/', required: true });
+    // Create (existing = null) or edit (existing = a local app) a web app.
+    // The installer only builds/edits the manifest; the runtime layer decides
+    // how each app launches. The id is never editable.
+    function webAppDialog(existing = null) {
+      const editing = !!existing;
+      const name = h('input.field', { placeholder: 'e.g. Wikipedia', maxlength: 60, required: true, value: existing?.name || '' });
+      const url = h('input.field', { type: 'url', placeholder: 'https://example.com/', required: true, value: existing?.target || '' });
+      const rt = existing?.runtime || 'direct';
       const runtime = h('select.field',
-        h('option', { value: 'direct' }, 'Direct — show the site in the app window'),
-        h('option', { value: 'embed' }, 'Embed — target is a provider embed URL'),
-        h('option', { value: 'external' }, 'External — open the site in Orion'),
+        h('option', { value: 'direct', selected: rt === 'direct' }, 'Direct — show the site in the app window'),
+        h('option', { value: 'embed', selected: rt === 'embed' }, 'Embed — target is a provider embed URL'),
+        h('option', { value: 'external', selected: rt === 'external' }, 'External — open the site in Orion'),
       );
-      const icon = h('input.field', { type: 'url', placeholder: 'https://…/icon.png (optional)' });
+      const icon = h('input.field', { type: 'url', placeholder: 'https://…/icon.png (optional)', value: existing?.iconUrl || '' });
       const dialog = h('div.store-dialog-backdrop',
         h('form.store-dialog.glass',
-          h('h2', 'New web app'),
+          h('h2', editing ? 'Edit web app' : 'New web app'),
           h('label', h('span', 'Name'), name),
           h('label', h('span', 'Target URL'), url),
           h('label', h('span', 'Runtime'), runtime),
@@ -107,23 +116,26 @@ export default {
           h('p.muted', { style: { margin: '0', fontSize: 'var(--fs-xs)' } }, 'Saved in this browser. Sites that block embedding won’t display in Direct mode — use External to open them in Orion.'),
           h('div.store-dialog-actions',
             h('button.btn', { type: 'button', onclick: () => dialog.remove() }, 'Cancel'),
-            h('button.btn.primary', { type: 'submit' }, 'Create app')),
+            h('button.btn.primary', { type: 'submit' }, editing ? 'Save' : 'Create app')),
         ));
       dialog.querySelector('form').addEventListener('submit', (e) => {
         e.preventDefault();
+        const fields = { name: name.value, target: url.value, runtime: runtime.value, icon: icon.value };
         try {
-          const app = registry.createLocal({ name: name.value, target: url.value, runtime: runtime.value, icon: icon.value });
+          const app = editing ? registry.editLocal(existing.id, fields) : registry.createLocal(fields);
           dialog.remove();
-          ctx.notify(`${app.name} added`, 'Find it in Start; drag it to the taskbar or desktop.', { type: 'success' });
+          ctx.notify(editing ? `${app.name} updated` : `${app.name} added`,
+            editing ? 'Changes saved.' : 'Find it in Start; drag it to the taskbar or desktop.', { type: 'success' });
           cat = 'Web';
           draw();
         } catch (err) {
-          ctx.notify('Could not add app', err.message, { type: 'error' });
+          ctx.notify(editing ? 'Could not save changes' : 'Could not add app', err.message, { type: 'error' });
         }
       });
       root.querySelector('.app').append(dialog);
       setTimeout(() => name.focus(), 30);
     }
+    const addWebApp = () => webAppDialog(null);
 
     function refreshCard(id) {
       const el = main.querySelector(`.store-card[data-id="${id}"]`);

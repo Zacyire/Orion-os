@@ -13,7 +13,7 @@
 //
 // The catalogue is built-in apps (from /api/apps, or static apps.json when
 // offline) merged with user-created web apps stored in localStorage
-// (createLocal / removeLocal). Built-in ids always take precedence.
+// (createLocal / editLocal / removeLocal). Built-in ids always take precedence.
 
 import { api } from './api.js';
 import { bus } from './events.js';
@@ -30,6 +30,39 @@ function userApps() {
 function saveUserApps(list) {
   local.set(USER_APPS_KEY, list);
 }
+const RUNTIMES = ['direct', 'embed', 'external'];
+
+/**
+ * Validate and normalize a web-app manifest's editable fields. Throws an Error
+ * with a human message on invalid input; callers surface it in the UI.
+ * `icon`/`iconUrl` are interchangeable on input (older manifests used `icon`).
+ */
+export function validateWebAppFields({ name, target, runtime, icon, iconUrl }) {
+  name = (name || '').trim();
+  if (!name) throw new Error('Name is required.');
+  if (name.length > 60) throw new Error('Name is too long (60 characters max).');
+  let url;
+  try {
+    url = new URL((target || '').trim());
+  } catch {
+    throw new Error('Enter a valid URL, including https://');
+  }
+  if (!/^https?:$/.test(url.protocol)) throw new Error('Only http:// and https:// URLs are supported.');
+  const rt = RUNTIMES.includes(runtime) ? runtime : 'direct';
+  const rawIcon = (iconUrl || icon || '').trim();
+  if (rawIcon && !/^https?:\/\//i.test(rawIcon)) throw new Error('Icon URL must start with http:// or https://');
+  const out = { name, target: url.href, runtime: rt };
+  if (rawIcon) out.iconUrl = rawIcon;
+  return out;
+}
+
+/** Build a full stored manifest for a user web app. */
+function userManifest(id, fields) {
+  const m = { id, name: fields.name, type: 'web-app', runtime: fields.runtime, target: fields.target, local: true };
+  if (fields.iconUrl) m.iconUrl = fields.iconUrl;
+  return m;
+}
+
 /** Stable, collision-free, filesystem-safe id derived from the app name. */
 function uniqueId(name) {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'app';
@@ -70,10 +103,17 @@ export const registry = {
     byId.clear();
     for (const a of catalog) byId.set(a.id, a);
     // Merge user-created web apps (localStorage). Built-in ids always win, so a
-    // user manifest can never shadow or alter a built-in app.
+    // user manifest can never shadow or alter a built-in app. Malformed
+    // manifests are skipped with a warning rather than throwing.
     for (const ua of userApps()) {
-      if (byId.has(ua.id)) continue;
-      const app = normalize({ ...ua, type: 'web-app', custom: true, local: true, installed: true });
+      if (!ua || !ua.id || byId.has(ua.id)) continue;
+      let app;
+      try {
+        app = normalize({ ...userManifest(ua.id, validateWebAppFields(ua)), custom: true, installed: true });
+      } catch (e) {
+        console.warn('[registry] skipping malformed user app', ua.id, e.message);
+        continue;
+      }
       catalog.push(app);
       byId.set(app.id, app);
     }
@@ -131,28 +171,40 @@ export const registry = {
    *   { id, name, type: "web-app", runtime, target, iconUrl? }
    * `runtime` is the Step-3 field (direct | embed | external).
    */
-  createLocal({ name, target, runtime = 'direct', icon }) {
-    name = (name || '').trim();
-    if (!name) throw new Error('Name is required.');
-    if (!['direct', 'embed', 'external'].includes(runtime)) runtime = 'direct';
-    let url;
-    try {
-      url = new URL(target.trim());
-    } catch {
-      throw new Error('Enter a valid URL, including https://');
-    }
-    if (!/^https?:$/.test(url.protocol)) throw new Error('Only http and https URLs are supported.');
-
+  createLocal(input) {
+    const fields = validateWebAppFields(input);
     const stored = userApps();
-    const manifest = { id: uniqueId(name), name, type: 'web-app', runtime, target: url.href };
-    if (icon && /^https?:\/\//i.test(icon.trim())) manifest.iconUrl = icon.trim();
+    const manifest = userManifest(uniqueId(fields.name), fields);
     stored.push(manifest);
     saveUserApps(stored);
 
-    const app = normalize({ ...manifest, custom: true, local: true, installed: true });
+    const app = normalize({ ...manifest, custom: true, installed: true });
     catalog.push(app);
     byId.set(app.id, app);
     bus.emit('registry:changed', { id: app.id, installed: true });
+    return app;
+  },
+
+  /**
+   * Edit a user-created app in place. The id is preserved (never editable),
+   * localStorage and the live catalogue are updated, and the app keeps its
+   * position/availability in the launcher.
+   */
+  editLocal(id, input) {
+    const stored = userApps();
+    const idx = stored.findIndex((a) => a && a.id === id);
+    if (idx < 0) throw new Error('This app is not a user-created app.');
+    const fields = validateWebAppFields(input);
+    const manifest = userManifest(id, fields);
+    stored[idx] = manifest;
+    saveUserApps(stored);
+
+    const app = normalize({ ...manifest, custom: true, installed: true });
+    const ci = catalog.findIndex((a) => a.id === id);
+    if (ci >= 0) catalog[ci] = app; // preserve position
+    else catalog.push(app);
+    byId.set(id, app);
+    bus.emit('registry:changed', { id });
     return app;
   },
 
