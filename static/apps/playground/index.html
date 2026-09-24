@@ -36,6 +36,11 @@
     .pill.on { background: rgba(55,211,153,.16); color: #37d399; }
     .pill.off { background: rgba(255,90,103,.16); color: #ff5a67; }
     .empty { color: #8a90a2; }
+    .cap-head { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+    .cap-head h2 { margin: 0; }
+    .note { color: #8a90a2; font-size: 12px; margin: 10px 0 0; }
+    .out { font-family: ui-monospace, monospace; font-size: 12px; color: #cdd3e1; background: #12141b; border: 1px solid #2a2e3a; border-radius: 8px; padding: 10px 12px; margin-top: 12px; white-space: pre-wrap; word-break: break-word; min-height: 18px; }
+    button:disabled { opacity: .45; cursor: not-allowed; filter: none; }
   </style>
 </head>
 <body>
@@ -67,6 +72,27 @@
   </section>
 
   <section>
+    <div class="cap-head"><h2>Storage</h2><span id="cap-storage-pill" class="pill off">checking…</span></div>
+    <ul class="methods" style="margin-bottom:14px">
+      <li>ltf.storage.get(key) <small>— resolves with the value, or null</small></li>
+      <li>ltf.storage.set(key, value) <small>— store a JSON-compatible value</small></li>
+      <li>ltf.storage.remove(key) <small>— delete a key</small></li>
+      <li>ltf.storage.clear() <small>— clear this app's storage only</small></li>
+    </ul>
+    <div class="row">
+      <button id="st-set">Set Test Value</button>
+      <button id="st-get" class="secondary">Get Test Value</button>
+      <button id="st-remove" class="secondary">Remove Test Value</button>
+      <button id="st-clear" class="secondary">Clear Storage</button>
+    </div>
+    <div class="out" id="st-out">—</div>
+    <p class="note">Values must be JSON-compatible (string, number, boolean, null, array, plain object).
+      Functions, DOM nodes, File/Blob and cyclic objects are rejected. Per-value limit: 100 KB.
+      Each app has its own isolated namespace — it cannot read other apps' data.
+      Stored values persist across app/page reloads (reopen this app and press “Get Test Value”).</p>
+  </section>
+
+  <section>
     <h2>Available API methods</h2>
     <ul class="methods">
       <li>ltf.app <small>— { id, name, version, permissions } (read-only)</small></li>
@@ -81,8 +107,9 @@
     var log = function (m) { $('log').textContent = m; };
     // Labels for the two currently supported capabilities. The host enforces
     // these; the app only reads its granted list to reflect state in the UI.
-    var PERM_LABELS = { notifications: 'Notifications', 'open-external': 'Open external URLs' };
-    var ALL_PERMS = ['notifications', 'open-external'];
+    var PERM_LABELS = { notifications: 'Notifications', 'open-external': 'Open external URLs', storage: 'Persistent storage' };
+    var ALL_PERMS = ['notifications', 'open-external', 'storage'];
+    var out = function (m) { $('st-out').textContent = m; };
 
     function renderPerms(perms) {
       var granted = {};
@@ -107,6 +134,12 @@
       // Reflect permission state on the action buttons too.
       $('open').disabled = !granted['open-external'];
       $('notify').disabled = !granted['notifications'];
+      // Storage capability pill + interactive buttons.
+      var storageOk = !!granted['storage'];
+      var pill = $('cap-storage-pill');
+      pill.className = 'pill ' + (storageOk ? 'on' : 'off');
+      pill.textContent = storageOk ? 'permitted' : 'blocked';
+      ['st-set', 'st-get', 'st-remove', 'st-clear'].forEach(function (id) { $(id).disabled = !storageOk; });
     }
 
     if (!window.ltf) {
@@ -127,6 +160,31 @@
       $('notify').onclick = function () {
         window.ltf.notify('LTF API Playground', 'Notification sent at ' + new Date().toLocaleTimeString());
         log('called ltf.notify(…)');
+      };
+
+      // Storage interactive tests. The "test value" is a small JSON object so
+      // reloading the app and pressing Get demonstrates persistence.
+      var TEST_KEY = 'playground:test';
+      $('st-set').onclick = function () {
+        var value = { message: 'hello from the Playground', savedAt: new Date().toISOString(), count: (Math.random() * 100) | 0 };
+        window.ltf.storage.set(TEST_KEY, value)
+          .then(function () { out('set("' + TEST_KEY + '") →\n' + JSON.stringify(value, null, 2)); })
+          .catch(function (e) { out('set error: ' + e.message); });
+      };
+      $('st-get').onclick = function () {
+        window.ltf.storage.get(TEST_KEY)
+          .then(function (v) { out('get("' + TEST_KEY + '") →\n' + (v === null ? 'null (no value stored)' : JSON.stringify(v, null, 2))); })
+          .catch(function (e) { out('get error: ' + e.message); });
+      };
+      $('st-remove').onclick = function () {
+        window.ltf.storage.remove(TEST_KEY)
+          .then(function () { out('remove("' + TEST_KEY + '") → done'); })
+          .catch(function (e) { out('remove error: ' + e.message); });
+      };
+      $('st-clear').onclick = function () {
+        window.ltf.storage.clear()
+          .then(function () { out('clear() → this app\'s storage cleared'); })
+          .catch(function (e) { out('clear error: ' + e.message); });
       };
     }
   </script>

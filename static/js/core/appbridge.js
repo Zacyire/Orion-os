@@ -19,17 +19,20 @@
 //   appbridge
 //     ├── metadata       — hello → the app's own { id, name, version, permissions }
 //     ├── navigation     — open(url) → Orion          [requires "open-external"]
-//     └── notifications  — notify(title, body) → toast [requires "notifications"]
+//     ├── notifications  — notify(title, body) → toast [requires "notifications"]
+//     └── storage        — get/set/remove/clear        [requires "storage"]
 //
-// Each entry is { perm?, run(msg, ctx) } where ctx = { source, appId, app }.
-// Before an action runs, the calling app's MANIFEST permissions (from the
-// host-controlled registry, never from the message) are checked against `perm`;
-// a missing permission means the request is safely ignored. Adding a capability
-// means adding one entry — the gate and permission check are shared.
+// Each entry is { perm?, run(msg, ctx) } where ctx = { source, appId, app,
+// granted }. `granted` is computed centrally from the calling app's MANIFEST
+// permissions (host-controlled registry, never the message). Fire-and-forget
+// handlers (notify/open) simply return when not granted; request/reply handlers
+// (storage) send a safe rejection instead. Adding a capability means adding one
+// entry — the gate and permission source are shared.
 
 import { wm } from './wm.js';
 import { registry } from './registry.js';
 import { notify } from './notify.js';
+import { appStorage, validKey } from './appstorage.js';
 
 const NOTIFY_TITLE_MAX = 120;
 const NOTIFY_BODY_MAX = 400;
@@ -72,25 +75,66 @@ function handleHello(_msg, { source, app, appId }) {
 // ── navigation ──────────────────────────────────────────────────────────────
 // Open an external URL in the Orion browser. http(s) only; anything else is
 // ignored (never a javascript:/data:/file: navigation).
-function handleOpen(msg) {
+function handleOpen(msg, { granted }) {
+  if (!granted) return; // missing "open-external" → safely ignored
   if (typeof msg.url === 'string' && /^https?:\/\//i.test(msg.url)) wm.open('orion', { url: msg.url });
 }
 
 // ── notifications ────────────────────────────────────────────────────────────
 // Show an in-OS toast. Title/body are coerced to strings and length-capped;
 // the title falls back to the app's name.
-function handleNotify(msg, { app }) {
+function handleNotify(msg, { app, granted }) {
+  if (!granted) return; // missing "notifications" → safely ignored
   const title = String(msg.title || '').slice(0, NOTIFY_TITLE_MAX) || (app?.name || 'App');
   const body = String(msg.body || '').slice(0, NOTIFY_BODY_MAX);
   notify(title, body);
 }
 
-// A handler may declare a required capability (`perm`); the dispatcher enforces
-// it against the app's manifest before running. `hello` needs none.
+// ── storage ───────────────────────────────────────────────────────────────
+// Per-app persistent key/value storage. Request/reply: the app awaits a Promise
+// keyed by `rid`; the host answers with { type:'storage-result', rid, ok, ... }.
+// The namespace is ALWAYS the host-identified appId — an app-supplied id or
+// permission in the message is never read, so an app can neither reach another
+// app's data nor grant itself the capability. A denied or failed op resolves to
+// a safe rejection, never a host crash.
+function handleStorage(msg, { source, appId, granted }) {
+  const rid = msg.rid;
+  const reply = (ok, value, error) =>
+    source.postMessage({ source: 'ltf-host', type: 'storage-result', rid, ok, value, error }, location.origin);
+
+  if (!granted) return reply(false, undefined, 'permission denied: storage');
+
+  try {
+    switch (msg.op) {
+      case 'get':
+        if (!validKey(msg.key)) return reply(false, undefined, 'invalid key');
+        return reply(true, appStorage.get(appId, msg.key)); // value or null
+      case 'set':
+        if (!validKey(msg.key)) return reply(false, undefined, 'invalid key');
+        appStorage.set(appId, msg.key, msg.value);
+        return reply(true, true);
+      case 'remove':
+        if (!validKey(msg.key)) return reply(false, undefined, 'invalid key');
+        appStorage.remove(appId, msg.key);
+        return reply(true, true);
+      case 'clear':
+        appStorage.clear(appId);
+        return reply(true, true);
+      default:
+        return reply(false, undefined, 'unknown storage op');
+    }
+  } catch (err) {
+    return reply(false, undefined, err.message || 'storage error');
+  }
+}
+
+// A handler may declare a required capability (`perm`); `granted` is computed
+// centrally and passed in. `hello` needs none.
 const handlers = {
   hello: { run: handleHello },
   open: { perm: 'open-external', run: handleOpen },
   notify: { perm: 'notifications', run: handleNotify },
+  storage: { perm: 'storage', run: handleStorage },
 };
 
 export function initAppBridge() {
@@ -102,8 +146,8 @@ export function initAppBridge() {
     const handler = handlers[d.type];
     if (!handler) return;
     // Permission comes from the host-controlled manifest, never the message, so
-    // an app can never grant itself a capability. Missing → safely ignored.
-    if (handler.perm && !registry.hasPermission(ctx.appId, handler.perm)) return;
-    handler.run(d, { source: e.source, appId: ctx.appId, app: registry.get(ctx.appId) });
+    // an app can never grant itself a capability.
+    const granted = !handler.perm || registry.hasPermission(ctx.appId, handler.perm);
+    handler.run(d, { source: e.source, appId: ctx.appId, app: registry.get(ctx.appId), granted });
   });
 }

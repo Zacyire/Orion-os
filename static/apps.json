@@ -172,7 +172,8 @@
     "runtime": "direct",
     "permissions": [
       "notifications",
-      "open-external"
+      "open-external",
+      "storage"
     ],
     "controls": [
       "reload"
