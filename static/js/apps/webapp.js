@@ -31,6 +31,7 @@ import { h } from '../core/dom.js';
 import { icons } from '../core/icons.js';
 import { createFrame } from '../core/frame.js';
 import { RUNTIMES, normalizeRuntime } from '../core/runtimes.js';
+import { trustedModule } from '../core/modules.js';
 
 const FALLBACK_CODES = new Set(['EMBEDDING_NOT_ALLOWED', 'SITE_UNAVAILABLE', 'NETWORK_TIMEOUT']);
 
@@ -189,7 +190,7 @@ function mountFrame({ root, ctx, app, args, target, isolated }) {
     container.append(el);
     btn?.classList.add('active');
     try {
-      const mod = await import(`./panels/${app.panel}.js`);
+      const mod = await import(`./panels/${trustedModule('panel', app.panel)}.js`);
       panel = { el, ...(mod.mountPanel(el, { ...ctx, frame, target, load: (url) => frame.load(url, { isolated }) }) || {}) };
     } catch (err) {
       el.textContent = `Panel unavailable: ${err.message}`;
@@ -200,7 +201,7 @@ function mountFrame({ root, ctx, app, args, target, isolated }) {
   async function mountFallback() {
     if (fallbackInstance) return;
     try {
-      const mod = await import(`./${app.fallback}.js`);
+      const mod = await import(`./${trustedModule('fallback', app.fallback)}.js`);
       frame.destroy();
       container.remove();
       ctx.win.setControls([{ icon: 'external', title: 'Open in browser tab', onClick: () => window.open(target, '_blank', 'noopener') }]);

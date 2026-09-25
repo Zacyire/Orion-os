@@ -16,6 +16,7 @@ use crate::{
     catalog,
     config::Config,
     sysstats::Sampler,
+    hosts::HostPolicy,
     netstats::NetSampler,
     web::{inspect::InspectCache, limit::RateLimiter},
 };
@@ -48,6 +49,8 @@ pub struct AppState {
     pub sysstats: Sampler,
     /// Read-only connectivity/latency sampler behind GET /api/network/stats.
     pub netstats: NetSampler,
+    /// Trusted `Host` values (DNS-rebinding defence), from config.
+    pub hosts: HostPolicy,
     /// Serialises disk writes so concurrent saves never interleave.
     write_lock: Mutex<()>,
 }
@@ -89,6 +92,7 @@ impl AppState {
             .map_err(std::io::Error::other)?;
 
         let netstats = NetSampler::new(config.netcheck_url.clone());
+        let hosts = HostPolicy::new(&config.allowed_hosts);
 
         let (events, _) = broadcast::channel(64);
         let limiter = RateLimiter::new(config.rate_limit_per_min);
@@ -97,6 +101,7 @@ impl AppState {
             inspect_cache: InspectCache::default(),
             sysstats: Sampler::new(),
             netstats,
+            hosts,
             files_dir,
             prefs: RwLock::new(prefs),
             installed: RwLock::new(installed),

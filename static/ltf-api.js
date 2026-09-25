@@ -5,14 +5,16 @@
 //
 //   <script src="/ltf-api.js"></script>
 //
-// It exposes `window.ltf` inside that page and talks to the OS over
-// postMessage. It exposes no OS internals — only this app's own metadata, a few
-// request methods, and its own isolated storage namespace. Cross-origin app
-// frames (direct/embed web apps) and
-// proxied/isolated frames are NOT granted the API: the OS bridge only answers
-// same-origin, non-proxied app frames (see static/js/core/appbridge.js). In
-// those runtimes `window.ltf` simply never receives metadata and requests are
-// ignored, rather than isolation being weakened.
+// It exposes `window.ltf` inside that page. Transport: the shim says `hello`
+// to its parent; the host authenticates the sender (browser-provided
+// event.source + event.origin, see static/js/core/appbridge.js) and hands this
+// document a private MessageChannel port. All requests and replies then travel
+// on that port — nothing else on the window channel is honoured. It exposes no
+// OS internals — only this app's own metadata, a few request methods, and its
+// own isolated storage namespace. Cross-origin, proxied and opaque-origin
+// frames are not granted the API: they never receive a port, so `window.ltf`
+// simply never becomes ready and calls stay queued, rather than isolation
+// being weakened.
 (function () {
   if (window.top === window.self) return; // only meaningful inside an app frame
   var host = window.parent;
@@ -27,29 +29,43 @@
   // Window lifecycle listeners (ltf.window.onStateChange).
   var winListeners = [];
   var winSubscribed = false;
+  // The private port handed over by the host after it authenticated us, and
+  // messages sent before that handshake completed.
+  var port = null;
+  var queue = [];
 
-  function post(msg) {
-    try { host.postMessage(Object.assign({ source: 'ltf-app' }, msg), '*'); } catch (e) { /* isolated */ }
+  // Send on the port (or queue until connected). Structured-clone failures
+  // (functions, DOM nodes, …) are reported to the caller, never thrown.
+  function send(msg, onError) {
+    if (!port) { queue.push({ msg: msg, onError: onError }); return; }
+    try { port.postMessage(msg); } catch (e) { if (onError) onError(e); }
   }
 
-  // Send a request the host answers, returning a Promise. Structured-clone
-  // failures (functions, DOM nodes, …) reject here rather than throwing.
+  function post(msg) { send(Object.assign({ source: 'ltf-app' }, msg)); }
+
+  // Send a request the host answers, returning a Promise.
   function request(type, msg) {
     return new Promise(function (resolve, reject) {
       var rid = 'r' + (++reqSeq);
       pending[rid] = { resolve: resolve, reject: reject };
-      try {
-        host.postMessage(Object.assign({ source: 'ltf-app', type: type, rid: rid }, msg), '*');
-      } catch (e) {
+      send(Object.assign({ source: 'ltf-app', type: type, rid: rid }, msg), function () {
         delete pending[rid];
         reject(new Error('value is not serializable'));
-      }
+      });
     });
   }
 
+  // Handshake: accept exactly one port, only from our parent.
   window.addEventListener('message', function (e) {
-    if (e.source !== host) return;
+    if (port || e.source !== host) return;
     var d = e.data;
+    if (!d || d.source !== 'ltf-host' || d.type !== 'connect' || !e.ports || !e.ports[0]) return;
+    port = e.ports[0];
+    port.onmessage = function (ev) { receive(ev.data); };
+    queue.splice(0).forEach(function (q) { send(q.msg, q.onError); });
+  });
+
+  function receive(d) {
     if (!d || d.source !== 'ltf-host') return;
     if (d.type === 'app' && d.app) {
       app.id = d.app.id;
@@ -67,7 +83,7 @@
       // Lifecycle push for this window; deliver to all listeners.
       winListeners.slice().forEach(function (cb) { try { cb(d.state); } catch (e) { /* listener threw */ } });
     }
-  });
+  }
 
   window.ltf = {
     // Read-only metadata about the running app (populated after the handshake).
@@ -146,5 +162,7 @@
     },
   };
 
-  post({ type: 'hello' }); // request metadata
+  // Ask the host to authenticate this document and hand over a port. The
+  // hello carries no data, so any target origin is fine.
+  try { host.postMessage({ source: 'ltf-app', type: 'hello' }, '*'); } catch (e) { /* no parent */ }
 })();

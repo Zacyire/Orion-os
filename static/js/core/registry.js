@@ -19,6 +19,7 @@ import { api } from './api.js';
 import { bus } from './events.js';
 import { local } from './dom.js';
 import { normalizeRuntime } from './runtimes.js';
+import { trustedModule } from './modules.js';
 
 let catalog = [];
 
@@ -93,6 +94,37 @@ function userManifest(id, fields) {
   return m;
 }
 
+// Display-only metadata a local app may carry beyond its validated core
+// (catalog installs add these), plus two strictly typed frame options below.
+// Nothing else from stored/app data is copied — in particular never `module`,
+// `fallback`, `panel`, `sandbox`, `allow`, `controls` or `type`, which select
+// shell code or widen frame privileges.
+const LOCAL_EXTRA = ['catalogId', 'description', 'version'];
+const GLYPH = /^[a-z][a-z0-9]{0,31}$/;
+
+/**
+ * The ONLY way a local (untrusted, localStorage-sourced) app becomes a
+ * manifest: validated core fields + an allowlist of short display strings.
+ * Stored data is never spread into a registry entry.
+ */
+export function localManifest(id, fields, extra = {}) {
+  const m = userManifest(id, fields);
+  for (const k of LOCAL_EXTRA) {
+    if (Object.hasOwn(extra, k) && typeof extra[k] === 'string') m[k] = extra[k].slice(0, 500);
+  }
+  // Glyph icon names from the catalog (e.g. "globe"); never inherited names
+  // like "constructor", which would resolve on the icon tables' prototypes.
+  if (Object.hasOwn(extra, 'icon') && typeof extra.icon === 'string' && GLYPH.test(extra.icon) && !(extra.icon in Object.prototype)) {
+    m.icon = extra.icon;
+  }
+  // Frame options that can only REDUCE privilege or resource use, strictly
+  // typed: isolated mode renders through the opaque /proxy/page sandbox (which
+  // never gets the bridge); suspendOnMinimize unloads the page while minimized.
+  if (Object.hasOwn(extra, 'proxy') && (extra.proxy === 'isolated' || extra.proxy === 'off')) m.proxy = extra.proxy;
+  if (Object.hasOwn(extra, 'suspendOnMinimize') && extra.suspendOnMinimize === true) m.suspendOnMinimize = true;
+  return m;
+}
+
 /** Stable, collision-free, filesystem-safe id derived from the app name. */
 function uniqueId(name) {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'app';
@@ -112,7 +144,10 @@ function normalize(a) {
     icon: 'web', category: 'Web', description: '', developer: '', version: '1.0.0', default_size: [1180, 740],
     ...a,
     type,
-    module: a.module || (type === 'web-app' ? 'webapp' : type === 'browser' ? 'orion' : a.id),
+    // Web apps and the browser always use their fixed container module; only
+    // built-in native apps name their own (and loadModule still checks it
+    // against the trusted set in core/modules.js).
+    module: type === 'web-app' ? 'webapp' : type === 'browser' ? 'orion' : (a.module || a.id),
     // Missing permissions == no capabilities. Sanitized to known ids so a bad
     // manifest can never smuggle in an unknown capability.
     permissions: normalizePermissions(a.permissions),
@@ -142,9 +177,9 @@ export const registry = {
       if (!ua || !ua.id || byId.has(ua.id)) continue;
       let app;
       try {
-        // Keep the stored manifest's extra fields (catalogId, description,
-        // version, icon) while enforcing validated core fields.
-        app = normalize({ ...ua, ...userManifest(ua.id, validateWebAppFields(ua)), custom: true, installed: true });
+        // Validated core + allowlisted display fields only (never a spread of
+        // stored data — it could otherwise name shell modules or frame options).
+        app = normalize({ ...localManifest(ua.id, validateWebAppFields(ua), ua), custom: true, installed: true });
       } catch (e) {
         console.warn('[registry] skipping malformed user app', ua.id, e.message);
         continue;
@@ -250,7 +285,7 @@ export const registry = {
     } else {
       id = uniqueId(fields.name);
     }
-    const manifest = { ...userManifest(id, fields), ...(opts.extra || {}) };
+    const manifest = localManifest(id, fields, opts.extra || {});
     // Dedup by id so a fixed-id install can never leave two entries.
     const stored = userApps().filter((a) => a.id !== id);
     stored.push(manifest);
@@ -289,8 +324,9 @@ export const registry = {
     const idx = stored.findIndex((a) => a && a.id === id);
     if (idx < 0) throw new Error('This app is not a user-created app.');
     const fields = validateWebAppFields(input);
-    // Preserve extra fields (catalogId, description, version, …) across edits.
-    const manifest = { ...stored[idx], ...userManifest(id, fields) };
+    // Preserve allowlisted display fields (catalogId, description, version,
+    // icon) across edits; anything else in the stored entry is dropped.
+    const manifest = localManifest(id, fields, stored[idx]);
     stored[idx] = manifest;
     saveUserApps(stored);
 
@@ -321,7 +357,8 @@ export const registry = {
   async loadModule(id) {
     const app = byId.get(id);
     if (!app) throw new Error(`Unknown app "${id}"`);
-    const mod = await import(`../apps/${app.module}.js`);
+    // Fails closed: only names in core/modules.js are ever imported.
+    const mod = await import(`../apps/${trustedModule('app', app.module)}.js`);
     return mod.default;
   },
 };

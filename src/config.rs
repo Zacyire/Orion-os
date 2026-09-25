@@ -32,6 +32,9 @@ pub struct Config {
     /// (`/api/network/stats`). `LTF_NETCHECK_URL`; default
     /// `crate::netstats::DEFAULT_NETCHECK_URL`; set empty to disable.
     pub netcheck_url: Option<String>,
+    /// Extra exact hostnames trusted in `Host` (`LTF_ALLOWED_HOSTS`, comma-
+    /// separated) on top of `localhost` and IP literals. See src/hosts.rs.
+    pub allowed_hosts: Vec<String>,
 }
 
 impl Config {
@@ -56,6 +59,7 @@ impl Config {
                 Ok(v) => Some(v),                                     // operator override
                 Err(_) => Some(crate::netstats::DEFAULT_NETCHECK_URL.to_string()),
             },
+            allowed_hosts: var("LTF_ALLOWED_HOSTS").map(|v| v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()).unwrap_or_default(),
         }
     }
 }

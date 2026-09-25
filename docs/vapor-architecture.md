@@ -1,10 +1,11 @@
 # Vapor — architecture & threat model
 
-**Status:** Step 20 architecture decision record. Nothing here is implemented
-yet; this is the plan the next steps build against. Every claim about the
-current system was checked against the code (file:line) and, where it matters
-for security, reproduced in a real browser against a throwaway server
-(evidence in [Appendix A](#appendix-a--evidence)).
+**Status:** Step 20 architecture decision record; the Phase-0 security
+prerequisites are implemented (Step 21, §15). Nothing else is implemented yet;
+this is the plan the next steps build against. Every claim about the current
+system was checked against the code (file:line) and, where it matters for
+security, reproduced in a real browser against a throwaway server (evidence in
+[Appendix A](#appendix-a--evidence); line numbers are as of Step 20).
 
 **One-line summary.** Vapor becomes a *controlled package system for web
 content*: authors ship a `.vapor` ZIP with a small `vapor.json`. The Rust
@@ -151,15 +152,15 @@ becomes registry configuration. The `vapor:` prefix makes package ids
 Built-in ids never contain `:`, and a `catalog_is_valid` assertion can pin
 that.
 
-> ⚠ **Precondition (found during this review).** `registry.js:147` merges stored
-> local apps as `{ ...ua, ...userManifest(...) }`. `userManifest` doesn't set
-> `module`, so a stored `module` survives. `registry.js:115` then honours
-> `a.module`, and `registry.js:324` does ``import(`../apps/${app.module}.js`)``.
-> A stored entry can therefore choose which same-origin script the **shell**
-> imports. Today only same-origin (already fully trusted) code can write that
-> storage, so it isn't exploitable. But Vapor must never let package-derived
-> fields reach a registry entry by spreading. Phase 0 fixes this by forcing
-> `module` for `web-app` types.
+> ✅ **Precondition — fixed in Step 21 (§15.4).** Step 20 found that the registry
+> merged stored local apps as `{ ...ua, ...userManifest(...) }`, so a stored
+> `module` survived and chose which same-origin script the **shell** imported
+> (the same applied to `fallback` and `panel`). Local apps are now built only
+> by `registry.localManifest` (validated core + allowlisted display strings),
+> `web-app`/`browser` types always use their container module, and every
+> dynamic import goes through the fixed allowlist in `core/modules.js`. Vapor's
+> registry synthesis must use the same pattern: allowlisted fields only, never
+> a spread of package data.
 
 ---
 
@@ -310,8 +311,8 @@ Assume every package is hostile.
 | Reading other packages' files or data | Every opaque document has a unique origin; storage only via the bridge, namespaced by host-resolved id; files are public-by-design static assets, not secrets. |
 | Top-level navigation / popups / modal lock | No `allow-top-navigation*`, `allow-popups*`, `allow-modals`. |
 | `/net/`, `/proxy/fetch` as data fetchers | Cross-origin to the package: `/net/` sends `CORP: same-origin` (`fetch.rs:98`), no CORS. A package *can* frame `/proxy/page` but can't read it (display only; same guards as any site). Accepted residual. |
-| `/ws` event bus (prefs, file names) | **Currently open to any origin (verified 101 for `Origin: https://evil.example` and `null`).** Phase-0 prerequisite: Origin allowlist on `/ws`. |
-| DNS rebinding makes a hostile site same-origin with `/api` (including future install endpoints) | **Existing gap (Step 16).** Phase-0 prerequisite: Host-header allowlist. Required before exposing `/api/vapor/*`. |
+| `/ws` event bus (prefs, file names) | **Fixed in Step 21 (§15.2):** the upgrade is refused unless `Origin` is exactly the request's own origin (was: 101 for `https://evil.example` and `null`). |
+| DNS rebinding makes a hostile site same-origin with `/api` (including future install endpoints) | **Fixed in Step 21 (§15.1):** server-wide Host allowlist (`localhost`, IP literals, operator-listed exact names). |
 | MIME sniffing / script-as-image | Extension→MIME allowlist, `X-Content-Type-Options: nosniff`, unknown → `application/octet-stream`. |
 | Service-worker abuse | Opaque origins can't register service workers; the shell SW must bypass `/vapor/` (§10). |
 | Cookies / credentials | LTF sets no cookies (verified: no `Set-Cookie` in `src/`); opaque origins have none; `/api` is unreadable. |
@@ -321,28 +322,31 @@ Assume every package is hostile.
 | CPU/memory denial of service (infinite loops) | Opaque frames may share the shell's renderer process, so a busy loop can jank the shell. Mitigations: close window, `suspendOnMinimize`. **Residual, documented honestly.** |
 | Bundled first-party games | Remain trusted (same-origin). They are **part of the trusted base** and must never be the template for third-party content. |
 
-### `window.ltf` bridge (verified behaviour → required changes)
+### `window.ltf` bridge
 
-Today `senderApp` (`appbridge.js:55`) identifies a sender by **iframe element +
-`src` attribute** and never checks `MessageEvent.origin`. Replies go to
-`targetOrigin = location.origin` (`appbridge.js:87,119,156,227`). Verified with
-an opaque frame whose `src` is same-origin: **requests are accepted**
-(`notify` fired) **but replies are dropped** (`ready()` never resolves). The
-bridge therefore neither works for packages nor checks what document is
-actually talking.
+**Step 20 finding:** the bridge identified a sender by **iframe element + `src`
+attribute** and never checked `MessageEvent.origin`; replies went to
+`targetOrigin = location.origin`. With an opaque frame whose `src` was
+same-origin, **requests were accepted** (`notify` fired) **but replies were
+dropped**.
 
-Phase 0/C changes:
+**Step 21 (implemented, §15.3):** a `hello` is authenticated with `e.source`
+(exact app iframe) + `e.origin` (must be the shell origin), then the host
+transfers a private `MessageChannel` port to that document; all API traffic
+uses the port and the window channel accepts nothing but `hello`.
 
-1. Require `e.origin === location.origin` for first-party frames. This also
-   closes the case where a first-party frame navigates elsewhere and inherits
-   its permissions.
-2. Recognize package frames explicitly: the window's registry entry has
-   `runtime: "package"`, `src` starts with `/vapor/pkg/<id>/`, and
-   `e.origin === "null"`.
-3. Reply to package frames with `targetOrigin "*"` **only** via `e.source`.
-   Replies carry only that package's own data, and the `"null"` origin check
-   rejects a frame that navigated to a real origin.
-4. Permissions come from the server-side installed record (granted at install),
+**Phase C (updated recommendation — replaces "reply with `*`"):**
+
+1. Add one explicit package clause to `expectedOrigin()`: the window's registry
+   entry has `runtime: "package"`, the iframe `src` starts with
+   `/vapor/pkg/<id>/<version>/`, and then the expected origin is `"null"`.
+2. Deliver the port to such frames with `targetOrigin "*"` — the only option
+   for an opaque document — sent **only** to the authenticated `e.source`. Any
+   document inside that sandboxed frame is package-controlled (the sandbox
+   flags apply to every navigation in it), so this grants nothing the package
+   didn't already have. After that, replies travel on the port, so the old
+   dropped-reply problem disappears without broadcasting anything.
+3. Permissions come from the server-side installed record (granted at install),
    never from the message or the manifest at launch.
 
 ---
@@ -400,7 +404,8 @@ modules, no CORS) with per-package isolation by real origin.
 - Other costs: Firefox/Safari `*.localhost` behaviour must be verified; remote
   deployments need wildcard DNS plus TLS; uninstall must clear per-origin
   storage (`Clear-Site-Data`).
-- Considered only after Phase 0's Host validation, as an opt-in mode.
+- Considered only as an opt-in mode on top of Step 21's Host policy — as a
+  separate, structured package-host class, never by widening that list.
 
 **Decision:** ship Model A. Its failure mode is "a game can't save" rather than
 "a game reads your files".
@@ -505,15 +510,12 @@ Evolve the existing `content/games.json`; don't add a new service.
 
 Small, independently testable steps. Each keeps existing suites green.
 
-**Phase 0: security prerequisites.** Valuable on their own, and required
-before any untrusted package runs:
+**Phase 0: security prerequisites — ✅ done in Step 21 (§15).**
 
-- **0.1** Host-header allowlist (DNS rebinding). It protects `/api` and future
-  install endpoints, and is also the basis for Model B.
-- **0.2** Origin check on `/ws` (verified open today).
-- **0.3** Bridge sender validation via `e.origin` (verified: it ignores origin).
-- **0.4** Registry hardening: force `module` for `web-app`; stop spreading
-  stored fields (`registry.js:115/147/324`).
+- **0.1** Host-header allowlist (DNS rebinding).
+- **0.2** Origin check on `/ws`.
+- **0.3** Bridge caller authentication (`e.source` + `e.origin` + port).
+- **0.4** Trusted-module allowlist; local apps from allowlisted fields only.
 
 **Phase A: foundation (Rust, no routes).**
 
@@ -573,6 +575,84 @@ circumvention, and **any expansion of `/proxy/page`**. `/proxy/page` remains
 the conservative isolated-webpage mechanism. Vapor packages are locally
 installed content and never route through it or use it to bypass a site's
 restrictions.
+
+---
+
+## 15. Implemented security prerequisites (Step 21)
+
+All four Phase-0 items are enforced and covered by durable tests
+(`cargo test`, `tests/security-contract.test.mjs`,
+`tests/browser/security.browser.mjs`), each mutation-checked.
+
+### 15.1 Host policy (`src/hosts.rs`, outermost middleware in `build_app`)
+
+Every request — API, static shell, web layer, `/ws` — must name a trusted host.
+HTTP/1.1 uses `Host`; HTTP/2 the URI authority; if both exist they must agree.
+A missing or untrusted host gets `403 unrecognized host`.
+
+| Accepted (any valid port, or none) | Rejected |
+|---|---|
+| `localhost` | any other hostname: `evil.example`, `localhost.evil.example`, `127.0.0.1.nip.io`, `*.localhost` (incl. `blocks.pkg.localhost`), `localhost.` |
+| IPv4 / bracketed IPv6 literals (`127.0.0.1`, `192.168.1.20`, `[::1]`) — an IP literal can't be produced by DNS rebinding | `0.0.0.0`, `[::]`; non-canonical numbers (`127.1`, `0x7f.0.0.1`, `2130706433`) |
+| exact names in `LTF_ALLOWED_HOSTS` (comma-separated; for LAN names / reverse proxies) | malformed: userinfo, paths, spaces, bad ports, IPv6 zone ids, missing Host |
+
+The port is not a trust signal (reverse proxies change it); the hostname is.
+Invalid `LTF_ALLOWED_HOSTS` entries (wildcards, ports, IPs) are ignored with a
+warning — they never widen trust. **Future package hosts (Model B)** must be a
+separate host class that routes *only* to that package's files; never add a
+wildcard or suffix rule to this list.
+
+### 15.2 WebSocket Origin policy (`src/handlers/ws.rs`)
+
+Checked on the upgrade request, **before** it becomes a WebSocket: `Origin`
+must be exactly `http(s)://<this request's Host>` (same host, same effective
+port) and that Host must be trusted. `null`, foreign, look-alike
+(`http://127.0.0.1.evil.example`, `http://localhost:8080@evil.example`), other
+ports, paths, non-http schemes and a missing `Origin` are refused with 403. The
+only consumer is the shell (`static/js/core/api.js`), a same-origin browser
+page, so there is no legitimate Origin-less client.
+
+### 15.3 Bridge authentication (`static/js/core/appbridge.js`, `static/ltf-api.js`)
+
+1. The window `message` channel accepts only `{ type: 'hello' }`.
+2. A hello is honoured only if `event.source` is the `contentWindow` of an
+   iframe inside a registered app window (browser-enforced), that iframe is
+   meant for first-party content (same-origin `src`, not `/proxy/`), **and**
+   `event.origin` equals the shell origin. The `src` alone is never trusted: a
+   first-party frame that navigated to another origin is refused.
+3. The host transfers a fresh `MessageChannel` port to that document with
+   `targetOrigin` = the verified origin (a second, independent check). The port
+   is an unguessable object capability — no token strings, nothing in URLs —
+   bound to (app id, window id, iframe). All requests and replies use it.
+4. The port is closed when the window closes, the iframe leaves the DOM, or the
+   frame says hello again (reload / new document); every request also re-checks
+   that its binding is live. A leaked or stale port can't act.
+5. Permissions are unchanged: checked per request from the host registry, never
+   from the payload; the app id and window come from the binding, never the
+   payload.
+6. Opaque-origin frames get no port today (`event.origin` is `"null"` for every
+   opaque document). §7 describes the explicit Phase-C clause.
+
+The public `window.ltf` API is unchanged; calls made before the handshake are
+queued.
+
+### 15.4 Trusted modules (`static/js/core/modules.js`, `core/registry.js`)
+
+The shell imports app code by name in three places — `registry.loadModule`
+(`apps/<name>.js`), the web container's `fallback` and `panel`. Each goes
+through `trustedModule(kind, name)`: a frozen allowlist defined by LTF
+(`app`: appstore, notepad, orion, settings, spiceify, vapor, webapp;
+`fallback`: youtube; `panel`: geforcenow), a bare-name grammar, and own-list
+membership — so unknown names, traversal, absolute/protocol/`javascript:`/`data:`
+URLs, encoded variants and inherited property names all fail closed with no
+network request. Local apps are built only by `localManifest` (validated core +
+`catalogId`/`description`/`version` strings + a plain glyph `icon`, and two
+strictly typed options that can only reduce privilege: `proxy: "isolated"|"off"`
+and `suspendOnMinimize: true`); stored `module`, `fallback`, `panel`,
+`sandbox`, `allow`, `controls`, `type` and anything else are dropped. Existing local apps keep working (they were
+always `web-app` → `webapp`); junk fields in old stored entries are simply
+ignored. A contract test checks every built-in resolves to a listed module and
+every listed module has a file.
 
 ---
 

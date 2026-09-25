@@ -8,6 +8,7 @@ mod catalog;
 mod config;
 mod error;
 mod handlers;
+mod hosts;
 mod netstats;
 mod state;
 mod sysstats;
@@ -16,7 +17,7 @@ mod web;
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
-    extract::Request,
+    extract::{Request, State},
     http::{Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -103,7 +104,26 @@ fn build_app(state: state::SharedState) -> Router {
         .fallback_service(ServeDir::new(&static_dir).append_index_html_on_directories(true))
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
+        // Outermost: refuse untrusted Host values before any route runs.
+        .layer(middleware::from_fn_with_state(state.clone(), require_trusted_host))
         .with_state(state)
+}
+
+/// DNS-rebinding guard: every request must name a trusted host (src/hosts.rs).
+/// HTTP/1.1 carries it in `Host`; HTTP/2 in the URI authority. If both are
+/// present they must agree.
+async fn require_trusted_host(State(state): State<state::SharedState>, req: Request, next: Next) -> Response {
+    let header = req.headers().get(axum::http::header::HOST).and_then(|v| v.to_str().ok());
+    let authority = req.uri().authority().map(|a| a.as_str());
+    let host = match (header, authority) {
+        (Some(h), Some(a)) if !h.eq_ignore_ascii_case(a) => None,
+        (Some(h), _) => Some(h),
+        (None, a) => a,
+    };
+    if !host.is_some_and(|h| state.hosts.allows_host_header(h)) {
+        return (StatusCode::FORBIDDEN, "unrecognized host").into_response();
+    }
+    next.run(req).await
 }
 
 /// CSRF guard: state-changing API calls must carry `X-LTF-Client`. A custom
@@ -183,7 +203,7 @@ mod tests {
     }
 
     async fn send(app: &TestApp, method: &str, uri: &str, client_header: bool) -> (StatusCode, header::HeaderMap, Vec<u8>) {
-        let mut req = Request::builder().method(method).uri(uri);
+        let mut req = Request::builder().method(method).uri(uri).header(header::HOST, "localhost:8080");
         if client_header {
             req = req.header("x-ltf-client", "1");
         }
@@ -339,6 +359,7 @@ mod tests {
                 let req = Request::builder()
                     .method(method)
                     .uri("/api/system/stats")
+                    .header(header::HOST, "localhost:8080")
                     .header(header::ORIGIN, origin)
                     .header(header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
                     .body(Body::empty())
@@ -461,6 +482,159 @@ mod tests {
 
     async fn settled_net(app: &TestApp) -> Value {
         get_json(app, "/api/network/stats").await
+    }
+
+    async fn status_with_host(app: &TestApp, host: Option<&str>, uri: &str) -> StatusCode {
+        let mut req = Request::builder().uri(uri);
+        if let Some(h) = host {
+            req = req.header(header::HOST, h);
+        }
+        app.router.clone().oneshot(req.body(Body::empty()).unwrap()).await.unwrap().status()
+    }
+
+    #[tokio::test]
+    async fn host_policy_accepts_legitimate_hosts_on_every_route_kind() {
+        let app = test_app_with(|c| c.allowed_hosts = vec!["ltf.home.lan".into()]).await;
+        for host in ["localhost", "localhost:8080", "127.0.0.1:8080", "192.168.1.20:8080", "[::1]:8080", "ltf.home.lan", "LTF.home.lan:443"] {
+            for uri in ["/api/ping", "/", "/js/app.js"] {
+                assert_eq!(status_with_host(&app, Some(host), uri).await, StatusCode::OK, "{host} {uri}");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn host_policy_rejects_arbitrary_misleading_and_malformed_hosts() {
+        let app = test_app_with(|c| c.allowed_hosts = vec!["ltf.home.lan".into()]).await;
+        for host in [
+            "evil.example", "evil.example:8080", "localhost.evil.example:8080", "evil.localhost:8080",
+            "blocks.pkg.localhost:8080", "ltf.home.lan.evil.example", "0.0.0.0:8080", "127.1:8080",
+            "user@localhost", "localhost:99999", "localhost:", "[::1",
+        ] {
+            // Every surface: JSON API, static shell, web layer, event socket.
+            for uri in ["/api/ping", "/api/files", "/", "/api/web/inspect?url=https://example.com", "/ws"] {
+                assert_eq!(status_with_host(&app, Some(host), uri).await, StatusCode::FORBIDDEN, "{host} {uri}");
+            }
+        }
+        assert_eq!(status_with_host(&app, None, "/api/ping").await, StatusCode::FORBIDDEN, "missing Host");
+        // HTTP/2-style absolute authority that disagrees with Host is refused.
+        let req = Request::builder().uri("http://evil.example/api/ping").header(header::HOST, "localhost:8080").body(Body::empty()).unwrap();
+        assert_eq!(app.router.clone().oneshot(req).await.unwrap().status(), StatusCode::FORBIDDEN);
+    }
+
+    // ── /ws Origin policy: real server, raw handshake, real frames ──────────
+
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+
+    /// Serve `app` on an ephemeral loopback port (the TestApp keeps its data dir alive).
+    async fn live(app: &TestApp) -> std::net::SocketAddr {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let router = app.router.clone();
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>()).await;
+        });
+        addr
+    }
+
+    /// Send a WebSocket upgrade; return the HTTP status and, on 101, the stream.
+    async fn ws_handshake(addr: std::net::SocketAddr, host: &str, origin: Option<&str>) -> (u16, Option<TcpStream>) {
+        let mut sock = TcpStream::connect(addr).await.unwrap();
+        let mut req = format!(
+            "GET /ws HTTP/1.1\r\nHost: {host}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+        );
+        if let Some(o) = origin {
+            req.push_str(&format!("Origin: {o}\r\n"));
+        }
+        req.push_str("\r\n");
+        sock.write_all(req.as_bytes()).await.unwrap();
+        let mut head = Vec::new();
+        let mut b = [0u8; 1];
+        while !head.ends_with(b"\r\n\r\n") {
+            let n = tokio::time::timeout(std::time::Duration::from_secs(5), sock.read(&mut b)).await.expect("timeout").unwrap();
+            if n == 0 { break; }
+            head.push(b[0]);
+        }
+        let text = String::from_utf8_lossy(&head);
+        let status: u16 = text.split_whitespace().nth(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+        (status, (status == 101).then_some(sock))
+    }
+
+    /// Read one server frame (unmasked); returns (opcode, payload).
+    async fn read_frame(sock: &mut TcpStream) -> (u8, Vec<u8>) {
+        let mut h = [0u8; 2];
+        tokio::time::timeout(std::time::Duration::from_secs(5), sock.read_exact(&mut h)).await.expect("timeout").unwrap();
+        let mut len = (h[1] & 0x7f) as u64;
+        if len == 126 {
+            let mut e = [0u8; 2];
+            sock.read_exact(&mut e).await.unwrap();
+            len = u16::from_be_bytes(e) as u64;
+        } else if len == 127 {
+            let mut e = [0u8; 8];
+            sock.read_exact(&mut e).await.unwrap();
+            len = u64::from_be_bytes(e);
+        }
+        let mut payload = vec![0u8; len as usize];
+        sock.read_exact(&mut payload).await.unwrap();
+        (h[0] & 0x0f, payload)
+    }
+
+    /// Send a masked client text frame (short payloads only).
+    async fn send_text(sock: &mut TcpStream, text: &str) {
+        let mask = [0x12u8, 0x34, 0x56, 0x78];
+        let mut f = vec![0x81, 0x80 | text.len() as u8];
+        f.extend_from_slice(&mask);
+        f.extend(text.bytes().enumerate().map(|(i, b)| b ^ mask[i % 4]));
+        sock.write_all(&f).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn ws_same_origin_is_accepted_and_still_works() {
+        let app = test_app().await;
+        let addr = live(&app).await;
+        let host = format!("127.0.0.1:{}", addr.port());
+        let (status, sock) = ws_handshake(addr, &host, Some(&format!("http://{host}"))).await;
+        assert_eq!(status, 101, "same-origin upgrade must succeed");
+        let mut sock = sock.unwrap();
+        let (op, hello) = read_frame(&mut sock).await;
+        assert_eq!(op, 1);
+        assert!(String::from_utf8_lossy(&hello).contains("\"hello\""), "greeting frame");
+        send_text(&mut sock, r#"{"type":"ping"}"#).await;
+        let mut got_pong = false;
+        for _ in 0..5 {
+            let (_, p) = read_frame(&mut sock).await;
+            if String::from_utf8_lossy(&p).contains("pong") { got_pong = true; break; }
+        }
+        assert!(got_pong, "ping → pong still works");
+        // The localhost form of the same origin is equally accepted.
+        let lh = format!("localhost:{}", addr.port());
+        assert_eq!(ws_handshake(addr, &lh, Some(&format!("http://{lh}"))).await.0, 101);
+    }
+
+    #[tokio::test]
+    async fn ws_rejects_foreign_null_missing_and_misleading_origins() {
+        let app = test_app().await;
+        let addr = live(&app).await;
+        let port = addr.port();
+        let host = format!("127.0.0.1:{port}");
+        for origin in [
+            Some("https://evil.example".to_string()),
+            Some("null".to_string()),
+            None,
+            Some(format!("http://127.0.0.1.evil.example:{port}")),
+            Some(format!("http://localhost:{port}@evil.example")),
+            Some(format!("http://127.0.0.1:{}", port.wrapping_add(1))),
+            Some(format!("http://localhost:{port}")),       // different origin than 127.0.0.1
+            Some(format!("https://127.0.0.1:{port}/path")),
+            Some(format!("ws://127.0.0.1:{port}")),
+        ] {
+            let (status, sock) = ws_handshake(addr, &host, origin.as_deref()).await;
+            assert_eq!(status, 403, "origin {origin:?} must be refused before upgrade");
+            assert!(sock.is_none());
+        }
+        // DNS-rebinding shape: attacker hostname as both Host and Origin.
+        let evil = format!("evil.example:{port}");
+        assert_eq!(ws_handshake(addr, &evil, Some(&format!("http://{evil}"))).await.0, 403);
     }
 
     #[tokio::test]
