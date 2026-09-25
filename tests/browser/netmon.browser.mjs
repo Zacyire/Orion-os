@@ -138,7 +138,10 @@ try {
   // existing System Monitor widget still works alongside it
   await page.waitForFunction(() => document.querySelector('#widgets .widget[data-widget="sysmon"] .sysmon-status')?.textContent === 'Live', null, { timeout: 8000 });
   check('existing System Monitor widget still works', true);
-  check('both widgets are present in the #widgets column', await page.evaluate(() => document.querySelectorAll('#widgets > .widget').length) === 2);
+  check('System Monitor and Network widgets coexist in the #widgets column', await page.evaluate(() => {
+    const ids = [...document.querySelectorAll('#widgets > .widget')].map((w) => w.dataset.widget);
+    return ids.includes('sysmon') && ids.includes('netmon');
+  }));
 
   const real = consoleErrors.filter((e) => !/net::ERR|ERR_TUNNEL|ERR_PROXY|ERR_ABORTED|Failed to load resource/.test(e));
   check('no unexpected console errors', real.length === 0, real.join(' | '));

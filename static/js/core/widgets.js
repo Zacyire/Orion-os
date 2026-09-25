@@ -10,11 +10,12 @@
 // NOT a general widget framework (no drag layout, no persistence, no SDK).
 
 import { $ } from './dom.js';
+import { clock } from '../widgets/clock.js';
 import { sysmon } from '../widgets/sysmon.js';
 import { netmon } from '../widgets/netmon.js';
 
 // First-party widgets shown on the desktop, in mount order.
-const WIDGETS = [sysmon, netmon];
+const WIDGETS = [clock, sysmon, netmon];
 
 let root = null;
 const mounted = [];

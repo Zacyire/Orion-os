@@ -58,6 +58,22 @@ body.tb-right #widgets { padding-right: calc(var(--tb-offset) + 20px); }
 .sysmon-facts dt { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); margin: 0; }
 .sysmon-facts dd { margin: 0; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
+/* ─── Clock ─── */
+.clock {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 16px 18px 17px;
+  border-radius: var(--radius-lg);
+  background: var(--acrylic);
+  -webkit-backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
+  backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
+  border: 1px solid var(--system-glass-border);
+  box-shadow: var(--shadow-lg, 0 18px 40px rgba(0, 0, 0, 0.4)), var(--system-glass-highlight);
+  color: var(--text);
+  animation: pop-in var(--dur, 200ms) var(--ease, ease);
+}
+.clock-time { font-size: 34px; font-weight: 300; line-height: 1.05; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.clock-date { font-size: var(--fs-sm); color: var(--text-2); margin-top: 3px; }
+
 /* ─── Network Status ─── */
 .netmon {
   display: flex; flex-direction: column; gap: 10px;
