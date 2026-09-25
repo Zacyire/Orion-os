@@ -83,11 +83,12 @@ try {
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
   page.on('pageerror', (e) => consoleErrors.push('pageerror: ' + e.message));
 
-  // Fixed start time: Thursday 2026-09-24, a few seconds before midnight, so a
-  // short runFor exercises both live ticks and the date roll-over (a start far
-  // from midnight would make runFor fire hours of intervening timers).
-  const START = new Date(2026, 8, 24, 23, 59, 58); // month 8 = September (local time)
-  await page.clock.install({ time: START });
+  // The fake clock keeps running while the page loads, and load time varies,
+  // so assertions never depend on it: install well before midnight, let the
+  // desktop boot, then pauseAt() jumps to START (firing the due tick once) and
+  // freezes time. From there every check is deterministic.
+  const START = new Date(2026, 8, 24, 23, 59, 58); // Thu 23:59:58 local (month 8 = September)
+  await page.clock.install({ time: new Date(2026, 8, 24, 23, 0, 0) });
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.ltf?.wm, null, { timeout: 15000 });
@@ -95,13 +96,13 @@ try {
   // mount + shows a time and a date
   await page.waitForSelector(C, { timeout: 8000 });
   check('clock widget mounts into #widgets', await page.$(C) !== null);
+  await page.clock.pauseAt(START);
   const first = await readClock(page);
   const exp0 = await expected(page, START.getTime());
   check('displays a time', !!first.time && first.time.length > 0, JSON.stringify(first));
   check('displays a date', !!first.date && first.date.length > 0, JSON.stringify(first));
   check('time matches the browser local time', first.time === exp0.time, `${first.time} vs ${exp0.time}`);
   check('date matches the browser local date', first.date === exp0.date, `${first.date} vs ${exp0.date}`);
-  check('renders immediately (shows the load-time value, not blank)', first.time === exp0.time && first.time.includes('PM'), first.time);
   check('accessible <time> with datetime + aria-label', first.datetime && first.aria?.includes(first.time) && first.aria?.includes(first.date), JSON.stringify(first));
 
   // live update: one render per second, single timer (count text mutations).
@@ -130,6 +131,11 @@ try {
   await page.waitForSelector(C, { timeout: 8000 });
   const count = await page.evaluate(() => document.querySelectorAll('#widgets .widget[data-widget="clock"]').length);
   check('re-mount yields exactly one clock widget', count === 1, `count=${count}`);
+  // The clock is still paused, so no timer can have fired: a correct value here
+  // can only come from the synchronous render at mount.
+  const remount = await readClock(page);
+  const expNow = await expected(page, START.getTime() + 3000 + 5000);
+  check('renders immediately on mount (no timer needed)', remount.time === expNow.time && remount.date === expNow.date, `${JSON.stringify(remount)} vs ${JSON.stringify(expNow)}`);
 
   // coexistence: all three widgets present, System Monitor + Network still live
   const widgetOrder = await page.evaluate(() => [...document.querySelectorAll('#widgets > .widget')].map((w) => w.dataset.widget));
