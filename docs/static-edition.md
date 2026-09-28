@@ -34,7 +34,7 @@ No secrets are used. Nothing from `src/`, `deploy/`, `data/` or any key file is 
 1. Repository → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 2. **Private repositories:** GitHub Pages for a private repository needs a paid plan (Pro, Team or Enterprise). **The published site is public** even though the repository stays private (except for Enterprise private Pages).
 3. **Deploying from a non-default branch:** the `github-pages` environment may only allow deployments from the default branch. Either merge to `main`, or allow `claude/busy-hypatia-bfhego` under **Settings → Environments → github-pages → Deployment branches**.
-4. **Address:** the site will be at `https://zacyire.github.io/LTF-os/` (GitHub lowercases the account name). Everything uses relative paths, so the sub-path works.
+4. **Address:** the site will be at `https://zacyire.github.io/Orion-os/`, after the repository's rename to `Orion-os` (GitHub lowercases the account name; the old `LTF-os` name redirects). Everything uses relative paths, so the sub-path works.
 
 ## Local preview
 
