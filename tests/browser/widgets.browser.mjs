@@ -82,6 +82,9 @@ try {
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.ltf?.wm, null, { timeout: 15000 });
+  // A fresh browser gets the one-time welcome (core/entry.js); enter the desktop.
+  { const welcome = await page.waitForSelector('#entry-screen[data-mode="welcome"]', { timeout: 15000 }).catch(() => null);
+    if (welcome) { await page.keyboard.press('Enter'); await page.waitForSelector('#entry-screen', { state: 'detached', timeout: 5000 }); } }
 
   // 1. widget exists and mounted into #widgets
   await page.waitForSelector(W, { timeout: 8000 });

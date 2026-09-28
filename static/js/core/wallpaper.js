@@ -26,9 +26,9 @@ let animate = true;
 let covered = false; // a maximized window hides the wallpaper completely
 
 export const wallpaper = {
-  async init() {
+  async init({ timeout } = {}) {
     root = $('#wallpaper');
-    const doc = await api.content('wallpapers');
+    const doc = await api.content('wallpapers', { timeout });
     if (doc.items?.length) manifest = doc;
     store.watch('theme', (th) => this.apply(th));
     document.addEventListener('visibilitychange', () => syncPlayback());

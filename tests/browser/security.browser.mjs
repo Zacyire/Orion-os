@@ -94,6 +94,9 @@ try {
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.ltf?.wm && window.__ltfBridge, null, { timeout: 15000 });
+  // A fresh browser gets the one-time welcome (core/entry.js); enter the desktop.
+  { const welcome = await page.waitForSelector('#entry-screen[data-mode="welcome"]', { timeout: 15000 }).catch(() => null);
+    if (welcome) { await page.keyboard.press('Enter'); await page.waitForSelector('#entry-screen', { state: 'detached', timeout: 5000 }); } }
   // Toasts expire, so counting them is unreliable; look for a unique title.
   const handshakes = () => page.evaluate(() => window.__ltfBridge.acceptedHandshakes());
   const hasToast = (title) => page.evaluate((t) => [...document.querySelectorAll('.toast')].some((el) => el.textContent.includes(t)), title);

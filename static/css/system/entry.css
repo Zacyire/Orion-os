@@ -1,0 +1,83 @@
+/* ==========================================================================
+   Entry overlays (js/core/entry.js): first-visit welcome and screen lock.
+   Presentation only — not authentication.
+
+   While open, body.entry-open fades the work area and dock out so the live
+   wallpaper becomes the backdrop; windows and widgets stay mounted (and keep
+   running) underneath. Readability comes from a static scrim gradient, not a
+   full-screen blur, so the overlay stays cheap and works identically with
+   transparency off. Text is always light on the wallpaper scrim, in both
+   themes (the wallpaper is imagery, not a themed surface).
+   ========================================================================== */
+
+/* (The fade back in is part of #workarea's / #taskbar's own transition lists.) */
+body.entry-open #workarea,
+body.entry-open #taskbar {
+  opacity: 0; visibility: hidden;
+  transition: opacity var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur-slow);
+}
+
+#entry-screen {
+  position: fixed; inset: 0; z-index: var(--z-lock);
+  display: flex; flex-direction: column; align-items: center;
+  color: var(--text-on-wallpaper);
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 35%, rgba(4, 6, 14, 0.12), rgba(4, 6, 14, 0.5) 100%),
+    linear-gradient(to top, rgba(2, 4, 10, 0.72), rgba(2, 4, 10, 0.05) 45%, rgba(2, 4, 10, 0.25));
+  animation: entry-in var(--dur-slower) var(--ease-out) both;
+  outline: none;
+}
+#entry-screen.leaving { animation: entry-out var(--dur-slow) var(--ease-in) forwards; pointer-events: none; }
+@keyframes entry-in { from { opacity: 0; } }
+@keyframes entry-out { to { opacity: 0; transform: scale(1.015); } }
+
+.entry-mark { width: 44px; height: 44px; filter: drop-shadow(0 0 16px color-mix(in srgb, var(--accent-color) 50%, transparent)); }
+
+.entry-hint { margin: 0; font-size: var(--fs-sm); color: rgba(255, 255, 255, 0.72); text-shadow: var(--text-shadow-wallpaper); }
+.entry-hint kbd { color: inherit; border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.08); }
+
+/* Primary action: a glass pill. Enter/Space activate it; focus is visible. */
+.entry-action {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 44px; padding: 0 22px 0 24px; border-radius: var(--radius-pill);
+  font-size: var(--fs-md); font-weight: var(--fw-semibold); color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--system-glass-saturate));
+  backdrop-filter: blur(var(--blur)) saturate(var(--system-glass-saturate));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: var(--elev-2), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: background var(--dur-fast), transform var(--dur-fast), border-color var(--dur-fast);
+}
+.entry-action:hover { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.34); }
+.entry-action:active { transform: scale(0.97); }
+.entry-action:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.entry-action-ico svg { width: 18px; height: 18px; transition: transform var(--dur) var(--ease-spring); }
+.entry-action:hover .entry-action-ico svg { transform: translateX(3px); }
+
+/* ─── Lock ─── */
+#entry-screen[data-mode="lock"] { justify-content: space-between; padding: 16vh 24px 9vh; cursor: pointer; }
+.entry-clock { display: grid; justify-items: center; gap: var(--space-2); text-align: center; animation: rise-in var(--dur-slower) var(--ease-out) both; }
+.entry-time {
+  font-family: var(--font-display); font-size: clamp(64px, 11vw, 132px); font-weight: 200; line-height: 1;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.entry-date { font-size: clamp(16px, 1.8vw, 22px); font-weight: var(--fw-medium); opacity: 0.9; text-shadow: var(--text-shadow-wallpaper); }
+.entry-foot { display: grid; justify-items: center; gap: var(--space-3); animation: rise-in var(--dur-slower) var(--ease-out) 80ms both; }
+#entry-screen[data-mode="lock"] .entry-action { cursor: pointer; }
+
+/* ─── Welcome ─── */
+#entry-screen[data-mode="welcome"] { justify-content: center; padding: 24px; }
+.entry-card {
+  display: grid; justify-items: center; gap: var(--space-4); text-align: center;
+  width: min(460px, 100%);
+  animation: rise-in var(--dur-slower) var(--ease-out) 60ms both;
+}
+.entry-card .entry-mark { width: 64px; height: 64px; }
+.entry-title { text-wrap: balance; margin: 0; font-family: var(--font-display); font-size: clamp(28px, 3.2vw, 40px); font-weight: 300; letter-spacing: -0.01em; text-shadow: var(--text-shadow-wallpaper); }
+.entry-title b { font-weight: 600; }
+.entry-lead { text-wrap: balance; margin: 0 0 var(--space-2); font-size: var(--fs-md); line-height: 1.5; color: rgba(255, 255, 255, 0.82); text-shadow: var(--text-shadow-wallpaper); }
+
+@media (max-height: 560px) {
+  #entry-screen[data-mode="lock"] { padding-top: 8vh; padding-bottom: 6vh; }
+}

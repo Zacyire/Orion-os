@@ -63,6 +63,9 @@ async function openDesktop(ctx, errors) {
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   await page.goto(BASE);
   await page.waitForFunction(() => window.ltf?.wm && !document.body.classList.contains('booting'), null, { timeout: 30000 });
+  // Fresh browser → one-time welcome (core/entry.js); enter the desktop.
+  const welcome = await page.waitForSelector('#entry-screen[data-mode="welcome"]', { timeout: 10000 }).catch(() => null);
+  if (welcome) { await page.keyboard.press('Enter'); await page.waitForSelector('#entry-screen', { state: 'detached', timeout: 5000 }); }
   await page.waitForTimeout(500);
   return page;
 }

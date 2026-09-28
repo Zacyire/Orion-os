@@ -23,7 +23,7 @@ body:not(.booting) #shell { opacity: 1; transform: none; }
 #workarea {
   position: absolute;
   inset: 0 0 var(--tb-offset) 0;
-  transition: inset var(--dur-slow) var(--ease);
+  transition: inset var(--dur-slow) var(--ease), opacity var(--dur-slower) var(--ease-out), visibility 0s;
 }
 body.tb-top    #workarea { inset: var(--tb-offset) 0 0 0; }
 body.tb-left   #workarea { inset: 0 0 0 var(--tb-offset); }
@@ -92,22 +92,6 @@ body.tb-autohide #workarea { inset: 0; }
 
 #power-screen { position: fixed; inset: 0; z-index: var(--z-power); background: var(--bg-0); display: grid; place-content: center; justify-items: center; gap: 24px; color: #ddd; animation: pop-in 500ms ease; }
 .power-spinner { width: 42px; height: 42px; border-radius: 50%; border: 3px solid #222; border-top-color: var(--accent-color); animation: spin 0.9s linear infinite; }
-
-/* Lock screen (local screen lock — presentation only; not authentication).
-   Shares the display type and depth language that Phase 2 builds on. */
-#lock-screen {
-  position: fixed; inset: 0; z-index: var(--z-lock); display: flex; flex-direction: column; align-items: center; padding-top: 14vh;
-  background: radial-gradient(ellipse at 50% 30%, rgba(8, 12, 26, 0.25), rgba(2, 4, 10, 0.6));
-  backdrop-filter: blur(30px) saturate(140%); -webkit-backdrop-filter: blur(30px) saturate(140%);
-  color: var(--text-on-wallpaper); outline: none; animation: fade-in var(--dur-slower) var(--ease-out); transition: opacity 500ms, transform 500ms var(--ease);
-}
-#lock-screen.unlocking { opacity: 0; transform: translateY(-40px); }
-.lock-time { font-family: var(--font-display); font-size: clamp(64px, 12vw, 128px); font-weight: 200; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.35); }
-.lock-date { font-size: 22px; margin-top: 8px; opacity: 0.85; }
-.lock-user { margin-top: auto; margin-bottom: 14vh; display: grid; justify-items: center; gap: 8px; }
-.lock-user .avatar { width: 110px; height: 110px; font-size: 40px; box-shadow: 0 0 0 4px rgba(255,255,255,.2), var(--shadow-lg); }
-.lock-user b { font-size: 22px; font-weight: 500; }
-.lock-user small { opacity: 0.7; }
 
 @media (max-width: 640px) {
   :root { --tb-size: 48px; --icon-cell-w: 80px; --icon-cell-h: 88px; }

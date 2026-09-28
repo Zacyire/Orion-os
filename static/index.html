@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="css/system/tokens.css" />
   <link rel="stylesheet" href="css/system/base.css" />
   <link rel="stylesheet" href="css/system/boot.css" />
+  <link rel="stylesheet" href="css/system/entry.css" />
   <link rel="stylesheet" href="css/system/desktop.css" />
   <link rel="stylesheet" href="css/system/taskbar.css" />
   <link rel="stylesheet" href="css/system/flyouts.css" />
@@ -33,18 +34,42 @@
   <script type="module" src="js/app.js"></script>
 </head>
 <body class="tb-bottom booting">
-  <!-- ─────────────── Boot console ─────────────── -->
-  <section id="boot" aria-label="System startup">
-    <pre id="boot-log" aria-live="polite"></pre>
-    <div id="boot-loader">
-      <div class="boot-progress">
-        <span id="boot-percent">0%</span>
-        <div class="boot-bar"><i id="boot-bar-fill"></i></div>
-        <small id="boot-status">starting</small>
+  <!-- Orion OS mark: defined once, used by the startup splash and the
+       welcome/lock screens (<svg><use href="#orion-mark"/></svg>). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="orion-mark-orbit" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#8a6bff"/><stop offset="1" stop-color="#4cc3ff"/>
+      </linearGradient>
+      <radialGradient id="orion-mark-glow">
+        <stop offset="0" stop-color="#9fb8ff" stop-opacity=".55"/><stop offset="1" stop-color="#9fb8ff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <symbol id="orion-mark" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="20" fill="url(#orion-mark-glow)"/>
+      <ellipse cx="32" cy="32" rx="28" ry="11" fill="none" stroke="url(#orion-mark-orbit)" stroke-width="2.4" transform="rotate(-24 32 32)"/>
+      <circle cx="23.5" cy="36.5" r="2.9" fill="#fff"/>
+      <circle cx="32" cy="32" r="3.4" fill="#fff"/>
+      <circle cx="40.5" cy="27.5" r="2.9" fill="#fff"/>
+      <circle cx="20" cy="15.5" r="2.3" fill="#ffc29a"/>
+      <circle cx="45" cy="48.5" r="2.5" fill="#b9d2ff"/>
+    </symbol>
+  </svg>
+
+  <!-- ─────────────── Startup splash (js/core/boot.js) ───────────────
+       Static markup so it shows before any script runs. Progress and status
+       reflect the real startup steps; nothing here is simulated. -->
+  <section id="boot" aria-label="Orion OS is starting">
+    <div class="boot-center">
+      <svg class="boot-mark" aria-hidden="true"><use href="#orion-mark"/></svg>
+      <h1 class="boot-title">Orion <span>OS</span></h1>
+      <div class="boot-progress" role="progressbar" aria-label="Starting Orion OS" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <i id="boot-bar-fill"></i>
       </div>
-      <div class="boot-dots" role="progressbar" aria-label="Loading"><i></i><i></i><i></i><i></i><i></i></div>
+      <p id="boot-status" aria-live="polite">Starting</p>
+      <div id="boot-actions" hidden></div>
     </div>
-    <p class="boot-hint">Press <kbd>Esc</kbd> to skip</p>
+    <button type="button" class="boot-skip" id="boot-skip">Skip <kbd>Esc</kbd></button>
   </section>
 
   <!-- ─────────────── Desktop ─────────────── -->

@@ -1,33 +1,12 @@
 // Lock / restart / shut down.
 import { h, $ } from './dom.js';
 import { store } from './store.js';
-import { avatar } from './user.js';
+import { entry } from './entry.js';
 
 export const power = {
+  /** Local screen lock (presentation only — see core/entry.js). */
   lock() {
-    const time = h('div.lock-time');
-    const date = h('div.lock-date');
-    const tick = () => {
-      const d = new Date();
-      time.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      date.textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-    };
-    tick();
-    const timer = setInterval(tick, 1000);
-    const screen = h('section#lock-screen', { tabindex: 0 },
-      time, date,
-      h('div.lock-user', avatar(), h('b', store.get('user.name') || 'User'), h('small', 'Click or press any key to unlock')),
-    );
-    const unlock = () => {
-      screen.classList.add('unlocking');
-      clearInterval(timer);
-      window.removeEventListener('keydown', unlock);
-      setTimeout(() => screen.remove(), 500);
-    };
-    screen.addEventListener('click', unlock);
-    window.addEventListener('keydown', unlock);
-    document.body.append(screen);
-    screen.focus();
+    return entry.lock();
   },
 
   async restart() {

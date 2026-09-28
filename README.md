@@ -49,7 +49,7 @@ Orion OS runs as a normal HTTPS website on your own server (a VPS behind Caddy o
 
 ## The desktop
 
-- **Boot console:** Arch Linux / systemd style kernel and unit output. The unit list comes from `/api/system/boot-log` and reflects real configuration, e.g. whether the proxy is enabled and whether YouTube search is configured. It fades into the desktop when initialisation finishes. `Esc` skips it; Settings → System → *Fast startup* turns it off.
+- **Startup and entry:** a short Orion splash reports the real startup steps (preferences, apps, desktop, wallpaper) and says so honestly if the server is unavailable. It lasts about a second on the first visit, less afterwards, and none with Settings → System → *Fast startup* or reduced motion. `Esc` skips it. The first visit in a browser shows a one-time welcome (*Enter Orion*). `Ctrl+Alt+L` or Start → Lock shows the lock screen. The lock screen is a local screen cover, not authentication: the server sign-in is the security boundary.
 - **Live wallpaper:** a `<video autoplay loop muted playsinline>` layer. Wallpapers crossfade and pause when the tab is hidden, when animation is turned off, or under `prefers-reduced-motion`. If a video can't play, its poster image is shown, then a canvas gradient.
 - **Taskbar:** docks to the bottom, top, left or right. Change it by right-clicking the taskbar or desktop, or in Settings → Taskbar. It has the Start button, pinned and running apps, a network indicator (browser online state, server reachability and measured round-trip latency) and a clock with a calendar.
 - **Drag and drop:**

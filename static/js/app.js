@@ -13,17 +13,29 @@ import { flyouts } from './core/flyouts.js';
 import { power } from './core/power.js';
 import { initAppBridge } from './core/appbridge.js';
 import { widgets } from './core/widgets.js';
+import { entry } from './core/entry.js';
 
-async function init() {
-  await store.load();
+// Deadline for each boot-time server request. If the server is slow or
+// absent, startup continues with the copies saved in this browser (or the
+// static apps.json) instead of waiting forever.
+const BOOT_REQUEST_TIMEOUT_MS = 6000;
+
+/** Real startup work. `report(label, fraction)` drives the splash (boot.js). */
+async function init({ report = () => {} } = {}) {
+  const timeout = BOOT_REQUEST_TIMEOUT_MS;
+  report('Loading your preferences', 0.1);
+  await store.load({ timeout });
   initTheme();
-  await registry.load();
+  report('Loading apps', 0.35);
+  await registry.load({ timeout });
+  report('Preparing the desktop', 0.6);
   wm.init();
   taskbar.init();
   startMenu.init();
   desktop.init();
   widgets.init();
-  await wallpaper.init();
+  report('Loading wallpaper', 0.8);
+  await wallpaper.init({ timeout });
   connectEvents();
   bindShortcuts();
   registerServiceWorker();
@@ -66,11 +78,14 @@ function bindShortcuts() {
   });
 }
 
-runBoot(init).catch((err) => {
-  console.error(err);
-  document.body.classList.remove('booting');
-  document.getElementById('boot')?.remove();
-});
+runBoot(init)
+  .then(({ firstVisit }) => { if (firstVisit) entry.welcome(); })
+  .catch((err) => {
+    // Last resort: never leave the splash covering the page.
+    console.error(err);
+    document.body.classList.remove('booting');
+    document.getElementById('boot')?.remove();
+  });
 
 // Debug handle for the browser console.
 window.ltf = { wm, store, registry, taskbar, desktop, wallpaper };

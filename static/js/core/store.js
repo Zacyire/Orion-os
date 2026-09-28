@@ -41,10 +41,10 @@ function deepMerge(base, over) {
 }
 
 export const store = {
-  async load() {
+  async load({ timeout } = {}) {
     const cached = local.get('prefs');
     try {
-      prefs = deepMerge(FALLBACK, await api.get('/prefs'));
+      prefs = deepMerge(FALLBACK, await api.get('/prefs', { timeout }));
     } catch {
       prefs = deepMerge(FALLBACK, cached || {});
     }

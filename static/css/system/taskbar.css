@@ -11,7 +11,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   box-shadow: var(--elev-3), var(--highlight);
-  transition: transform var(--dur-slow) var(--ease), left var(--dur-slow) var(--ease), right var(--dur-slow) var(--ease), top var(--dur-slow) var(--ease), bottom var(--dur-slow) var(--ease), width var(--dur-slow) var(--ease), height var(--dur-slow) var(--ease);
+  transition: opacity var(--dur-slower) var(--ease-out), visibility 0s, transform var(--dur-slow) var(--ease), left var(--dur-slow) var(--ease), right var(--dur-slow) var(--ease), top var(--dur-slow) var(--ease), bottom var(--dur-slow) var(--ease), width var(--dur-slow) var(--ease), height var(--dur-slow) var(--ease);
 }
 body.tb-bottom #taskbar { left: var(--tb-gap); right: var(--tb-gap); bottom: var(--tb-gap); height: var(--tb-size); }
 body.tb-top    #taskbar { left: var(--tb-gap); right: var(--tb-gap); top: var(--tb-gap); height: var(--tb-size); }

@@ -100,6 +100,10 @@ try {
 
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.ltf?.registry && window.ltf?.wm, null, { timeout: 15000 });
+  // A fresh browser gets the one-time welcome (core/entry.js); enter the desktop
+  // so the real mouse interactions below reach it.
+  const welcome = await page.waitForSelector('#entry-screen[data-mode="welcome"]', { timeout: 15000 }).catch(() => null);
+  if (welcome) { await page.keyboard.press('Enter'); await page.waitForSelector('#entry-screen', { state: 'detached', timeout: 5000 }); }
   await page.waitForTimeout(300);
 
   // ── helpers (all observable: DOM, WM state, network targets) ──

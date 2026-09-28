@@ -163,14 +163,6 @@
   --z-lock: 10500;
   --z-power: 11000;
 
-  /* ─── Boot console ─── */
-  --boot-bg: #000;
-  --boot-text: #cfd2d8;
-  --boot-ok: #37d399;
-  --boot-warn: #f5b942;
-  --boot-fail: #ff5a67;
-  --boot-accent: #1793d1;
-
   /* ─── Wallpaper presentation ─── */
   --wallpaper-dim: 0.14;                     /* darken video for legibility */
   --wallpaper-vignette: 0.55;                /* edge darkening strength */

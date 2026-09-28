@@ -9,8 +9,26 @@ import { bus } from './events.js';
 
 export let online = true;
 
-async function request(method, path, body, { raw = false, headers = {} } = {}) {
+/**
+ * Optional `timeout` (ms): a deadline covering the whole exchange, headers and
+ * body. Used for boot-time requests so a server that accepts the connection
+ * but never answers can't hold startup forever. Without it, behaviour is
+ * unchanged.
+ */
+async function request(method, path, body, { timeout = 0, ...options } = {}) {
+  if (!(timeout > 0)) return send(method, path, body, options);
+  const ctrl = new AbortController();
+  const deadline = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    return await send(method, path, body, { ...options, signal: ctrl.signal });
+  } finally {
+    clearTimeout(deadline);
+  }
+}
+
+async function send(method, path, body, { raw = false, headers = {}, signal } = {}) {
   const opts = { method, headers: { 'X-LTF-Client': '1', ...headers } };
+  if (signal) opts.signal = signal;
   if (body instanceof FormData || typeof body === 'string' || body instanceof Blob) {
     opts.body = body;
   } else if (body !== undefined) {
@@ -77,9 +95,9 @@ export const api = {
   del: (p, o) => request('DELETE', p, undefined, o),
 
   /** Creator content catalogue (content/<kind>.json); empty when offline. */
-  async content(kind) {
+  async content(kind, opts) {
     try {
-      return await api.get(`/content/${kind}`);
+      return await api.get(`/content/${kind}`, opts);
     } catch {
       return { items: [] };
     }

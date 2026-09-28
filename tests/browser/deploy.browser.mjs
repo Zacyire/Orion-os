@@ -250,6 +250,12 @@ try {
   await Promise.all([page.waitForURL(`${ORIGIN}/`), page.click('button[type=submit]')]);
   await page.waitForFunction(() => window.ltf?.wm, null, { timeout: 20000 });
   await page.waitForFunction(() => !document.body.classList.contains('booting'), null, { timeout: 30000 });
+  // First entry in this browser: the one-time welcome, then the desktop.
+  const welcome = await page.waitForSelector('#entry-screen[data-mode="welcome"]', { timeout: 10000 }).catch(() => null);
+  check('first entry shows the Orion welcome', !!welcome);
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#entry-screen', { state: 'detached', timeout: 5000 }).catch(() => {});
+  check('Enter on the welcome enters the desktop (overlay gone, desktop interactive)', await page.evaluate(() => !document.querySelector('#entry-screen') && !document.querySelector('#shell').inert));
   check('right key → Orion OS desktop boots over HTTPS', true);
   const cookies = await ctx.cookies();
   const sess = cookies.find((c) => c.name === '__Host-orion_session');

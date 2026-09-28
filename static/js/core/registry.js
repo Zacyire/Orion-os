@@ -156,10 +156,10 @@ function normalize(a) {
 const byId = new Map();
 
 export const registry = {
-  async load() {
+  async load({ timeout } = {}) {
     let apps;
     try {
-      apps = await api.get('/apps');
+      apps = await api.get('/apps', { timeout });
     } catch {
       // Offline: read the static catalogue and use locally tracked installs.
       const res = await fetch('apps.json');

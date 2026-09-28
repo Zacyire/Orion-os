@@ -157,7 +157,7 @@ export default {
               } }, 'Erase & sign out')),
           ] : []),
           h('div.section-title', 'Startup'),
-          toggleRow('bolt', 'Fast startup', 'Skip the boot console animation.', store.get('boot.skipAnimation'), (v) => store.set('boot.skipAnimation', v)),
+          toggleRow('bolt', 'Fast startup', 'Skip the startup animation and go straight to the desktop.', store.get('boot.skipAnimation'), (v) => store.set('boot.skipAnimation', v)),
           h('div.section-title', 'Reset'),
           row('refresh', 'Reset preferences', 'Restore the default taskbar, desktop layout and theme.',
             h('button.btn.danger', { onclick: async () => { if (confirm('Reset all preferences?')) { await store.reset(); ctx.notify('Preferences reset'); draw(); } } }, 'Reset')),

@@ -79,3 +79,16 @@ Light theme: `:root[data-theme="light"]` overrides the same names, so components
 - reduced motion, transparency off and the light theme;
 - no page overflow;
 - widgets clear of the dock and icons at 1280×720 and 900px.
+
+## Startup and entry (Phase 2)
+
+- **Splash** (`#boot`, `core/boot.js`, `boot.css`):
+  - a dark power-on surface in both themes, with the Orion mark (`#orion-mark` SVG symbol in `index.html`);
+  - it reports only the real startup steps;
+  - it adds a short branded minimum: about 1.0 s on the first visit, about 0.35 s after that, and none with Fast startup, reduced motion or Esc.
+- **Welcome and lock** (`#entry-screen`, `core/entry.js`, `entry.css`):
+  - the live wallpaper is the backdrop; the work area and dock fade out, but windows stay mounted;
+  - readability comes from a static scrim, not a full-screen blur;
+  - text is light in both themes because it sits on imagery;
+  - the only glass is the action pill.
+- **Presentation only:** the lock never authenticates anything. The server sign-in page (`src/auth.rs`) is the security boundary.
