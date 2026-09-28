@@ -20,6 +20,10 @@ url = "2.5.8"
 # Read-only host stats for /api/system/stats. Only the "system" feature: the
 # user, disk, network and component APIs are not compiled in at all.
 sysinfo = { version = "0.38", default-features = false, features = ["system"] }
+# Private-beta access gate (src/auth.rs): HMAC-SHA256 session tokens, CSPRNG
+# nonces, constant-time comparison. Both were already in the tree via rustls.
+ring = "0.17"
+base64 = "0.22"
 
 [dev-dependencies]
 # Route-level tests (already in the tree via axum).

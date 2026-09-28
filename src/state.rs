@@ -51,6 +51,8 @@ pub struct AppState {
     pub netstats: NetSampler,
     /// Trusted `Host` values (DNS-rebinding defence), from config.
     pub hosts: HostPolicy,
+    /// Private-beta access gate; `None` when no access key is configured.
+    pub gate: Option<crate::auth::Gate>,
     /// Serialises disk writes so concurrent saves never interleave.
     write_lock: Mutex<()>,
 }
@@ -92,7 +94,11 @@ impl AppState {
             .map_err(std::io::Error::other)?;
 
         let netstats = NetSampler::new(config.netcheck_url.clone());
-        let hosts = HostPolicy::new(&config.allowed_hosts);
+        let mut hosts = HostPolicy::new(&config.allowed_hosts);
+        if config.mode == crate::config::Mode::Beta {
+            hosts = hosts.https_origins_only();
+        }
+        let gate = crate::auth::Gate::from_config(&config);
 
         let (events, _) = broadcast::channel(64);
         let limiter = RateLimiter::new(config.rate_limit_per_min);
@@ -102,6 +108,7 @@ impl AppState {
             sysstats: Sampler::new(),
             netstats,
             hosts,
+            gate,
             files_dir,
             prefs: RwLock::new(prefs),
             installed: RwLock::new(installed),

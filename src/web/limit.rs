@@ -63,7 +63,7 @@ pub async fn middleware(State(state): State<SharedState>, req: Request, next: Ne
     next.run(req).await
 }
 
-fn client_ip(req: &Request, trust_headers: bool) -> IpAddr {
+pub(crate) fn client_ip(req: &Request, trust_headers: bool) -> IpAddr {
     if trust_headers {
         if let Some(ip) = req
             .headers()

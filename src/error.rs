@@ -25,8 +25,9 @@ impl IntoResponse for ApiError {
             ApiError::Unavailable(m) => (StatusCode::SERVICE_UNAVAILABLE, m),
             ApiError::Upstream(m) => (StatusCode::BAD_GATEWAY, m),
             ApiError::Internal(m) => {
+                // Details (OS errors, task failures) go to the server log only.
                 tracing::error!("internal error: {m}");
-                (StatusCode::INTERNAL_SERVER_ERROR, m)
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
             }
         };
         (status, Json(json!({ "error": msg }))).into_response()

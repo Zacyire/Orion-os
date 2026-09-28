@@ -25,6 +25,11 @@ async function request(method, path, body, { raw = false, headers = {} } = {}) {
     throw err;
   }
   setOnline(true);
+  // Private beta: the session expired or was signed out elsewhere → show the sign-in page.
+  if (res.status === 401 && res.headers.get('content-type')?.includes('json')) {
+    const body = await res.clone().json().catch(() => null);
+    if (body?.error?.code === 'UNAUTHENTICATED') location.assign('/');
+  }
   if (!res.ok) {
     // Errors are either { error: "text" } (API) or { error: { code, message } } (web layer).
     let msg = res.statusText;

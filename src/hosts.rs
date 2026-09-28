@@ -94,6 +94,9 @@ fn is_hostname(h: &str) -> bool {
 pub struct HostPolicy {
     /// Operator-approved exact hostnames (lowercase).
     extra: Vec<String>,
+    /// Beta mode: the browser always reaches Orion OS over HTTPS, so a
+    /// same-origin check only accepts `https://` origins.
+    https_only: bool,
 }
 
 impl HostPolicy {
@@ -112,7 +115,18 @@ impl HostPolicy {
                 tracing::warn!(entry = %raw, "ignoring invalid LTF_ALLOWED_HOSTS entry (exact hostnames only; no ports or wildcards)");
             }
         }
-        HostPolicy { extra }
+        HostPolicy { extra, https_only: false }
+    }
+
+    /// Only accept `https://` origins in same-origin checks (beta mode).
+    pub fn https_origins_only(mut self) -> Self {
+        self.https_only = true;
+        self
+    }
+
+    /// No operator hostnames configured (only `localhost` and IP literals).
+    pub fn is_empty(&self) -> bool {
+        self.extra.is_empty()
     }
 
     /// Is this parsed authority a trusted host for this server?
@@ -138,6 +152,21 @@ impl HostPolicy {
     /// Check a raw `Host` header value.
     pub fn allows_host_header(&self, value: &str) -> bool {
         parse_authority(value).is_some_and(|a| self.allows(&a))
+    }
+}
+
+/// Does this request carry an `Origin` that is exactly its own trusted origin
+/// (`http(s)://<Host>`)? Used by the `/ws` upgrade and by the sign-in/sign-out
+/// forms. A missing `Origin` or `Host`, `null`, or any other origin is `false`.
+pub fn is_same_origin_request(policy: &HostPolicy, uri: &axum::http::Uri, headers: &axum::http::HeaderMap) -> bool {
+    use axum::http::header;
+    let host = headers.get(header::HOST).and_then(|v| v.to_str().ok()).or_else(|| uri.authority().map(|a| a.as_str()));
+    let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
+    match (origin, host) {
+        (Some(o), Some(h)) => {
+            (!policy.https_only || o.starts_with("https://")) && policy.allows_host_header(h) && origin_matches_host(o, h)
+        }
+        _ => false,
     }
 }
 

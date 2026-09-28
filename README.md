@@ -19,7 +19,12 @@ cargo run --release
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `LTF_MODE` | `development` | `beta` for a private HTTPS deployment: loopback bind, access key and trusted hostname required. See [docs/private-beta-deployment.md](docs/private-beta-deployment.md). |
+| `LTF_BIND` | `0.0.0.0` (`127.0.0.1` in beta) | Listen address |
 | `PORT` | `8080` | HTTP port |
+| `LTF_ALLOWED_HOSTS` | *(empty)* | Exact hostnames trusted in `Host` besides `localhost` and IP literals, e.g. `beta.example.com`. No wildcards. |
+| `LTF_ACCESS_KEY_FILE` / `LTF_ACCESS_KEY` | *(unset)* | Private access key (at least 16 characters). When set, every route except `/login`, `/logout` and `/healthz` requires signing in. Prefer the file form. |
+| `LTF_SESSION_HOURS` | `168` | Sign-in lifetime, from 1 to 720 hours |
 | `LTF_DATA_DIR` | `data` | Runtime state: prefs, installs, web apps, Notepad documents |
 | `LTF_STATIC_DIR` | `static` | Frontend files |
 | `LTF_CONTENT_DIR` | `content` | Content catalogues (music, games, YouTube, wallpapers). Re-read on every request. |
@@ -29,8 +34,13 @@ cargo run --release
 | `LTF_TRUST_PROXY_HEADERS` | `0` | Use `X-Forwarded-For` for rate limiting. Only enable behind your own reverse proxy. |
 | `LTF_USE_ENV_PROXY` | `0` | Send outbound requests through `HTTPS_PROXY`. Off by default because an intermediate proxy re-resolves DNS, which defeats address pinning. |
 | `LTF_PROXY_ALLOW_PRIVATE` | `0` | **Development or trusted intranet only.** Lets the web layer reach private and loopback addresses. |
+| `LTF_NETCHECK_URL` | *(built-in)* | Fixed destination for the Network widget's connectivity probe; empty disables it. |
 | `YOUTUBE_API_KEY` | *(unset)* | YouTube Data API v3 key. Enables search in the YouTube app. |
 | `RUST_LOG` | `ltf_os=info` | Log filter. Web-layer events are logged under `ltf_os::web`. |
+
+### Private beta deployment
+
+To reach Orion OS from other devices over HTTPS without publishing anything, run it behind Caddy or nginx with `LTF_MODE=beta` and an access key. [docs/private-beta-deployment.md](docs/private-beta-deployment.md) is the guide; [`deploy/`](deploy) has the tested reference configs; [docs/private-beta-checklist.md](docs/private-beta-checklist.md) is the real-device checklist.
 
 ## The desktop
 

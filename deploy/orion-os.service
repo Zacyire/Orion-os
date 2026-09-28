@@ -1,0 +1,40 @@
+# Orion OS private beta — systemd unit (optional; any process supervisor works).
+# Install the release binary at /opt/orion-os/ltf-os and the static/ and
+# content/ directories next to it. See docs/private-beta-deployment.md.
+
+[Unit]
+Description=Orion OS (private beta)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=orion-os
+Group=orion-os
+EnvironmentFile=/etc/orion-os/orion-os.env
+# The access key stays root-owned (0600); systemd hands the service a private copy.
+LoadCredential=access-key:/etc/orion-os/access-key
+Environment=LTF_ACCESS_KEY_FILE=%d/access-key
+WorkingDirectory=/opt/orion-os
+ExecStart=/opt/orion-os/ltf-os
+Restart=on-failure
+RestartSec=2
+
+# Hardening: the server only needs to write its data directory.
+StateDirectory=orion-os
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/orion-os
+
+[Install]
+WantedBy=multi-user.target

@@ -9,13 +9,17 @@
 //! foreign, look-alike and missing origins are all refused. The only consumer
 //! is the desktop shell (static/js/core/api.js), a browser page on this same
 //! origin, which always sends `Origin`.
+//!
+//! With the private-beta access gate on (src/auth.rs), the upgrade also needs
+//! a signed-in session, and the stream closes once that session expires or is
+//! signed out — an open socket never outlives its sign-in.
 
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        State, WebSocketUpgrade,
+        Extension, State, WebSocketUpgrade,
     },
-    http::{header, HeaderMap, StatusCode, Uri},
+    http::{HeaderMap, StatusCode, Uri},
     response::{IntoResponse, Response},
 };
 use futures_util::{SinkExt, StreamExt};
@@ -24,26 +28,33 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::state::SharedState;
 
-pub async fn upgrade(State(state): State<SharedState>, uri: Uri, headers: HeaderMap, ws: WebSocketUpgrade) -> Response {
+pub async fn upgrade(
+    State(state): State<SharedState>,
+    uri: Uri,
+    headers: HeaderMap,
+    signed_in: Option<Extension<crate::auth::Session>>,
+    ws: WebSocketUpgrade,
+) -> Response {
     if !same_origin(&state, &uri, &headers) {
         return (StatusCode::FORBIDDEN, "cross-origin WebSocket refused").into_response();
     }
-    ws.on_upgrade(move |socket| session(socket, state))
+    let signed_in = signed_in.map(|Extension(s)| s);
+    if state.gate.is_some() && signed_in.is_none() {
+        // Unreachable behind require_access; kept so /ws can never be open by mistake.
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    ws.on_upgrade(move |socket| session(socket, state, signed_in))
 }
 
 /// `Origin` must equal the request's own (trusted) origin.
 fn same_origin(state: &SharedState, uri: &Uri, headers: &HeaderMap) -> bool {
-    let host = headers.get(header::HOST).and_then(|v| v.to_str().ok()).or_else(|| uri.authority().map(|a| a.as_str()));
-    let origin = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok());
-    match (origin, host) {
-        (Some(o), Some(h)) => state.hosts.allows_host_header(h) && crate::hosts::origin_matches_host(o, h),
-        _ => false,
-    }
+    crate::hosts::is_same_origin_request(&state.hosts, uri, headers)
 }
 
-async fn session(socket: WebSocket, state: SharedState) {
+async fn session(socket: WebSocket, state: SharedState, signed_in: Option<crate::auth::Session>) {
     let (mut tx, mut rx) = socket.split();
     let mut events = state.events.subscribe();
+    let mut recheck = tokio::time::interval(std::time::Duration::from_secs(15));
 
     let hello = json!({ "type": "hello", "data": { "uptime": state.started.elapsed().as_secs() } });
     if tx.send(Message::Text(hello.to_string().into())).await.is_err() {
@@ -52,6 +63,14 @@ async fn session(socket: WebSocket, state: SharedState) {
 
     loop {
         tokio::select! {
+            _ = recheck.tick() => {
+                if let (Some(gate), Some(s)) = (&state.gate, &signed_in) {
+                    if !gate.is_live(s) {
+                        let _ = tx.send(Message::Close(None)).await;
+                        break;
+                    }
+                }
+            }
             ev = events.recv() => match ev {
                 Ok(text) => {
                     if tx.send(Message::Text(text.into())).await.is_err() { break; }

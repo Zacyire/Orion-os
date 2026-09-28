@@ -134,6 +134,7 @@ export default {
       async system() {
         const info = await ctx.api.get('/system/info').catch(() => null);
         const feat = info?.features || {};
+        const session = await ctx.api.get('/session').catch(() => null);
         const yes = (v) => h('span', { class: `chip ${v ? 'accent' : ''}` }, v ? 'Enabled' : 'Disabled');
         return [
           h('h1.page-title', 'System'),
@@ -144,6 +145,11 @@ export default {
           h('div.section-title', 'Server features'),
           row('shield', 'Web layer (isolated mode & /net/ fetching)', feat.proxy_allowlist?.length ? `Allowed hosts: ${feat.proxy_allowlist.join(', ')}` : 'Any public host (LTF_PROXY, LTF_PROXY_ALLOW). Sites that forbid embedding are never shown in windows.', yes(feat.proxy)),
           row('search', 'YouTube search', 'Requires YOUTUBE_API_KEY on the server.', yes(feat.youtube_search)),
+          ...(session?.access_control ? [
+            h('div.section-title', 'Private beta'),
+            row('lock', 'Sign out', 'End this browser’s session. Local preferences and app data stay in this browser.',
+              h('button.btn', { onclick: async () => { await fetch('/logout', { method: 'POST' }).catch(() => {}); location.assign('/'); } }, 'Sign out')),
+          ] : []),
           h('div.section-title', 'Startup'),
           toggleRow('bolt', 'Fast startup', 'Skip the boot console animation.', store.get('boot.skipAnimation'), (v) => store.set('boot.skipAnimation', v)),
           h('div.section-title', 'Reset'),
