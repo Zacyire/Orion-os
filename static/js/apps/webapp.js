@@ -149,7 +149,13 @@ function mountExternal({ root, ctx, app }) {
     h('p', `${app.name} opens in a normal browser tab. Your browser’s usual settings and network rules apply.`),
     host ? h('code', host) : h('code', 'no address configured'),
     h('div.frame-actions',
-      h('button.btn.primary', { onclick: open, disabled: !host }, h('span', { html: icons.external }), `Open ${app.name}`),
+      // A real link, not window.open(): a user-clicked target="_blank" link is
+      // an ordinary new-tab navigation, which popup rules and some managed
+      // browsers treat more reliably than a script-opened tab. Same fixed
+      // registry target; the browser's network rules still apply.
+      host
+        ? h('a.btn.primary', { href: target, target: '_blank', rel: 'noopener noreferrer' }, h('span', { html: icons.external }), `Open ${app.name}`)
+        : h('button.btn.primary', { disabled: true }, h('span', { html: icons.external }), `Open ${app.name}`),
     ),
     h('p.frame-external-note', 'Orion OS doesn’t host, run or route this site.'),
   ));

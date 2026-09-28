@@ -152,7 +152,13 @@ try {
     const opened = [];
     const realOpen = window.open;
     window.open = (...a) => { opened.push(a); return null; };
-    document.querySelector(`.window[data-id="${wid}"] .frame-actions .btn.primary`).click();
+    // The primary action is a real target="_blank" link: record its navigation
+    // (href, target, rel) instead of letting the test open a tab.
+    const btn = document.querySelector(`.window[data-id="${wid}"] .frame-actions .btn.primary`);
+    const record = (e) => { if (e.target.closest?.('a[href]') === btn) { opened.push([btn.getAttribute('href'), btn.getAttribute('target'), btn.getAttribute('rel')]); e.preventDefault(); } };
+    document.addEventListener('click', record, true);
+    btn.click();
+    document.removeEventListener('click', record, true);
     await new Promise((r) => setTimeout(r, 300));
     window.open = realOpen;
     const orion = [...window.ltf.wm.windows.values()].filter((w) => w.appId === 'orion');
@@ -167,7 +173,13 @@ try {
     const opened = [];
     const realOpen = window.open;
     window.open = (...a) => { opened.push(a); return null; };
-    document.querySelector(`.window[data-id="${wid}"] .frame-actions .btn.primary`).click();
+    // The primary action is a real target="_blank" link: record its navigation
+    // (href, target, rel) instead of letting the test open a tab.
+    const btn = document.querySelector(`.window[data-id="${wid}"] .frame-actions .btn.primary`);
+    const record = (e) => { if (e.target.closest?.('a[href]') === btn) { opened.push([btn.getAttribute('href'), btn.getAttribute('target'), btn.getAttribute('rel')]); e.preventDefault(); } };
+    document.addEventListener('click', record, true);
+    btn.click();
+    document.removeEventListener('click', record, true);
     window.open = realOpen;
     return { opened, text: document.querySelector(`.window[data-id="${wid}"] .frame-notice`).textContent };
   }, redirected.winId);

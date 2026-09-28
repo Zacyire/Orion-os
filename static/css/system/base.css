@@ -60,6 +60,7 @@ input[type="range"]::-moz-range-thumb { width: 10px; height: 10px; border-radius
   box-shadow: var(--highlight);
   transition: background var(--dur-fast), transform var(--dur-fast), filter var(--dur-fast), box-shadow var(--dur-fast); white-space: nowrap;
 }
+a.btn { color: inherit; text-decoration: none; }
 .btn:hover { background: var(--surface-hover); filter: brightness(1.15); }
 .btn:active { transform: scale(0.97); filter: brightness(0.95); }
 .btn:disabled { opacity: 0.45; pointer-events: none; }

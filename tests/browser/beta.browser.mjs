@@ -19,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ROBLOX = 'https://172.ip.nowgg.fun/apps/a/19900/b.html';
 const CINEJOY = 'https://cinejoy.pk/';
+const NETFLIX = 'https://www.netflix.com/';
 let pass = 0, fail = 0;
 function check(name, cond, detail = '') {
   if (cond) pass++; else fail++;
@@ -102,13 +103,26 @@ async function launchExternal(page, id, args) {
     await new Promise((r) => setTimeout(r, 300));
     const el = document.querySelector(`.window[data-id="${w.id}"]`);
     const info = { iframe: !!el.querySelector('iframe'), text: el.querySelector('.frame-notice')?.textContent || '', badge: !!el.querySelector('.win-titlebar .app-icon') };
-    el.querySelector('.frame-actions .btn.primary').click();
+    // The primary action is a real target="_blank" link. Click it, but record
+    // the navigation instead of letting the test open a tab.
+    const btn = el.querySelector('.frame-actions .btn.primary');
+    info.link = { tag: btn.tagName, href: btn.getAttribute('href'), target: btn.getAttribute('target'), rel: btn.getAttribute('rel') };
+    info.navigated = [];
+    const record = (e) => { if (e.target.closest?.('a[href]') === btn) { info.navigated.push(btn.getAttribute('href')); e.preventDefault(); } };
+    document.addEventListener('click', record, true);
+    btn.click();
+    document.removeEventListener('click', record, true);
     info.opened = window.__opened.slice();
     window.ltf.wm.close(w.id);
     await new Promise((r) => setTimeout(r, 300));
     return info;
   }, [id, args]);
 }
+
+/** The hand-off is a genuine new-tab link to exactly `url` (not a script-opened window). */
+const isTabLink = (r, url) => r.link.tag === 'A' && r.link.href === url && r.link.target === '_blank'
+  && /\bnoopener\b/.test(r.link.rel) && /\bnoreferrer\b/.test(r.link.rel)
+  && r.navigated.length === 1 && r.navigated[0] === url && r.opened.length === 0;
 
 try {
   await waitFor(`${BASE}/api/ping`);
@@ -138,15 +152,15 @@ try {
     check('launcher shows Roblox and CineJoy, badged as opening in the browser', inLauncher('Roblox')?.ext && inLauncher('CineJoy')?.ext, JSON.stringify(launcher));
     await page.keyboard.press('Escape');
 
-    for (const [id, url] of [['roblox', ROBLOX], ['cinejoy', CINEJOY]]) {
+    for (const [id, url] of [['roblox', ROBLOX], ['cinejoy', CINEJOY], ['netflix', NETFLIX]]) {
       const before = requests.length;
       const r = await launchExternal(page, id);
-      check(`${id}: launch opens exactly ${url} in a new browser tab (noopener)`, r.opened.length === 1 && r.opened[0][0] === url && r.opened[0][1] === '_blank' && /noopener/.test(r.opened[0][2]), JSON.stringify(r.opened));
+      check(`${id}: launch is a real link to exactly ${url} in a new browser tab (noopener noreferrer)`, isTabLink(r, url), JSON.stringify(r));
       check(`${id}: no iframe; the window says it opens in the browser`, !r.iframe && /opens in a normal browser tab/.test(r.text), r.text.slice(0, 120));
-      const leaked = requests.slice(before).filter((u) => /\/proxy\/|\/net\/|\/api\/web\/inspect|nowgg|cinejoy/.test(u));
+      const leaked = requests.slice(before).filter((u) => /\/proxy\/|\/net\/|\/api\/web\/inspect|nowgg|cinejoy|netflix\.com/.test(u));
       check(`${id}: no proxy, inspect or direct request is made by Orion`, leaked.length === 0, leaked.join(' '));
       const injected = await launchExternal(page, id, { url: 'https://evil.example/', runtime: 'direct', proxy: 'isolated' });
-      check(`${id}: launch arguments cannot change the destination or runtime`, injected.opened.length === 1 && injected.opened[0][0] === url && !injected.iframe && !injected.text.includes('evil'), JSON.stringify(injected));
+      check(`${id}: launch arguments cannot change the destination or runtime`, isTabLink(injected, url) && !injected.iframe && !injected.text.includes('evil'), JSON.stringify(injected));
     }
     // A user-made local app can't take over a built-in id.
     const shadow = await page.evaluate(async () => {
@@ -271,10 +285,26 @@ try {
     await page.evaluate(() => { window.ltf.wm.closeApp('webplayer'); window.ltf.wm.closeApp('vapor'); });
 
     // External apps hand off to the browser exactly as in the full edition.
-    for (const [id, url] of [['roblox', ROBLOX], ['cinejoy', CINEJOY]]) {
+    for (const [id, url] of [['roblox', ROBLOX], ['cinejoy', CINEJOY], ['netflix', NETFLIX]]) {
       const r = await launchExternal(page, id);
-      check(`static: ${id} opens ${url} in the browser`, r.opened.length === 1 && r.opened[0][0] === url, JSON.stringify(r.opened));
+      check(`static: ${id} opens ${url} in the browser via a real link`, isTabLink(r, url), JSON.stringify(r));
+      const injected = await launchExternal(page, id, { url: 'https://evil.example/', runtime: 'direct', proxy: 'isolated' });
+      check(`static: ${id} launch arguments cannot change the destination`, isTabLink(injected, url) && !injected.iframe, JSON.stringify(injected));
     }
+    // A real click opens a genuine new tab at the exact destination. The test
+    // answers those hosts itself so no request leaves the machine.
+    await ctx.route(/^https:\/\/(172\.ip\.nowgg\.fun|cinejoy\.pk|www\.netflix\.com)\//, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>stub</title>' }));
+    for (const [id, url] of [['roblox', ROBLOX], ['cinejoy', CINEJOY], ['netflix', NETFLIX]]) {
+      const wid = await page.evaluate(async (appId) => (await window.ltf.wm.open(appId)).id, id);
+      await page.waitForTimeout(300);
+      const [tab] = await Promise.all([ctx.waitForEvent('page'), page.click(`.window[data-id="${wid}"] .frame-actions a.btn.primary`)]);
+      await tab.waitForLoadState('domcontentloaded').catch(() => {});
+      const opener = await tab.evaluate(() => window.opener === null).catch(() => null);
+      check(`static: clicking ${id} opens a new tab at exactly ${url} without an opener`, tab.url() === url && opener === true, `${tab.url()} opener-null=${opener}`);
+      await tab.close();
+      await page.evaluate((w) => window.ltf.wm.close(w), wid);
+    }
+    await ctx.unroute(/^https:\/\/(172\.ip\.nowgg\.fun|cinejoy\.pk|www\.netflix\.com)\//);
     // A "direct" web app can't be preflighted without a server → honest browser hand-off.
     const yt = await page.evaluate(async () => {
       window.__opened = [];
