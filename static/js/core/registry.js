@@ -357,8 +357,12 @@ export const registry = {
   async loadModule(id) {
     const app = byId.get(id);
     if (!app) throw new Error(`Unknown app "${id}"`);
-    // Fails closed: only names in core/modules.js are ever imported.
-    const mod = await import(`../apps/${trustedModule('app', app.module)}.js`);
+    // Fails closed: only names in core/modules.js are ever imported. The
+    // specifier is made absolute against this module's own URL (what import()
+    // resolves against natively anyway) so a layer that resolves import()
+    // arguments against the page URL — some URL-rewriting web proxies do —
+    // still gets the right file under a sub-path like /Orion-os/.
+    const mod = await import(new URL(`../apps/${trustedModule('app', app.module)}.js`, import.meta.url).href);
     return mod.default;
   },
 };

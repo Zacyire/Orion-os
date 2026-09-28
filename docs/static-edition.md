@@ -41,3 +41,17 @@ No secrets are used. Nothing from `src/`, `deploy/`, `data/` or any key file is 
 ```bash
 ./tools/build-static.sh _site && python3 -m http.server -d _site 8000   # → http://localhost:8000
 ```
+
+## Sub-path hosting and URL-rewriting proxies
+
+The site is served from `/Orion-os/`, so every Orion URL is relative, and
+app modules are loaded with `import(new URL(…, import.meta.url))` rather than
+a bare relative specifier. Browsers resolve both forms the same way. Some
+URL-rewriting web proxies, however, resolve `import()` arguments against the
+page URL instead of the calling module. With a bare `../apps/x.js` that gave
+`Failed to fetch dynamically imported module: <proxy>/apps/webapp.js`, and no
+app could open. `tests/browser/basepath.browser.mjs` covers both cases.
+
+Orion doesn't proxy, relay or rewrite anything itself. If a network or proxy
+blocks a site that an external app opens, the browser shows that block as
+usual.
