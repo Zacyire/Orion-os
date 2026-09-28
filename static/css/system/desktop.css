@@ -110,3 +110,14 @@ body.tb-autohide #workarea { inset: 0; }
 .app-icon.art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06); pointer-events: none; }
 .app-icon.art svg { width: 100%; height: 100%; filter: none; }
 .app-icon.art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* "Opens in your browser" badge on apps with the external runtime. */
+.app-icon-ext {
+  position: absolute; right: -3px; bottom: -3px; width: 42%; height: 42%; min-width: 12px; min-height: 12px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--surface-solid); color: var(--text); box-shadow: 0 0 0 1.5px var(--bg-0), var(--elev-1);
+}
+.app-icon-ext svg { width: 62%; height: 62%; filter: none; }
+.app-icon.sm .app-icon-ext { display: none; }
+.app-icon.art .app-icon-ext { right: 2px; bottom: 2px; width: 38%; height: 38%; }
+.app-icon.art .app-icon-ext svg { width: 62%; height: 62%; }

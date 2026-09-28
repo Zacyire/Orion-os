@@ -2,7 +2,7 @@
 import { runBoot } from './core/boot.js';
 import { store } from './core/store.js';
 import { registry } from './core/registry.js';
-import { connectEvents } from './core/api.js';
+import { connectEvents, isStatic } from './core/api.js';
 import { initTheme } from './core/theme.js';
 import { wm } from './core/wm.js';
 import { taskbar } from './core/taskbar.js';
@@ -44,7 +44,8 @@ async function init({ report = () => {} } = {}) {
 
 /** static/sw.js: /net/ resource caching + offline shell. Never blocks boot. */
 function registerServiceWorker() {
-  if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+  // The worker serves /net/ and the offline shell for the full (server) edition.
+  if (isStatic || !('serviceWorker' in navigator) || !window.isSecureContext) return;
   navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => console.warn('[sw] registration failed', err));
 }
 

@@ -1,4 +1,5 @@
 // Settings — personalization, wallpaper, taskbar, account, sound, system.
+import { isStatic } from '../core/api.js';
 import { h, syncRange, fill } from '../core/dom.js';
 import { icons } from '../core/icons.js';
 import { store } from '../core/store.js';
@@ -168,7 +169,9 @@ export default {
         return [
           h('h1.page-title', 'About'),
           h('div.card.account-card', h('img', { src: 'assets/logo.svg', alt: '', style: { width: '64px', height: '64px' } }),
-            h('div', h('h2', 'Orion OS'), h('p.muted', 'A desktop environment for games and media, served by a Rust API layer. Apps are isolated containers that embed real services and content.'))),
+            h('div', h('h2', 'Orion OS ', h('span.chip.accent', 'Beta 0.1')),
+              h('p.muted', 'A desktop environment for games and media. Apps that sites allow to be embedded run in windows; others open in your normal browser.'),
+              h('p.muted', isStatic ? 'Static edition — the Orion server isn’t part of this site, so server features (system stats, network checks, server files and sync) are unavailable. Settings are saved in this browser.' : 'Full edition — served by the Orion Rust server.'))),
           h('div.section-title', 'Keyboard shortcuts'),
           h('dl.info-grid', ...[
             ['Ctrl + Space', 'Start'], ['Alt + W', 'Close window'], ['Alt + M', 'Minimize window'], ['Alt + ↑', 'Maximize / restore'],

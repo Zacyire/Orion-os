@@ -109,3 +109,7 @@ body.tb-right #widgets { padding-right: calc(var(--tb-offset) + var(--space-5));
   #widgets > .widget { width: 232px; }
   .clock-time { font-size: 32px; }
 }
+
+/* Keep widget header title and status on one line (e.g. "Server unavailable"). */
+.sysmon-title, .netmon-title, .sysmon-state { white-space: nowrap; }
+.sysmon-head { min-width: 0; }

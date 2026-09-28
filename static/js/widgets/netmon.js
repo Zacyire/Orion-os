@@ -16,7 +16,7 @@
 
 import { h } from '../core/dom.js';
 import { icons } from '../core/icons.js';
-import { api } from '../core/api.js';
+import { api, isStatic } from '../core/api.js';
 
 const POLL_MS = 3000; // the backend re-probes at most every 20s; this is well under
 
@@ -76,12 +76,17 @@ export const netmon = {
         if (disposed) return;
         // Distinct from a backend-reported offline: the API itself is
         // unreachable. Keep the last known values if we have them.
-        setState('transport', haveData ? 'Offline · retrying' : 'Unavailable');
+        setState('transport', haveData ? 'Offline · retrying' : 'Server unavailable');
       } finally {
         inFlight = false;
       }
     }
 
+    // Static edition: no server, so no server-side latency to report.
+    if (isStatic) {
+      setState('transport', 'Server unavailable');
+      return () => { disposed = true; };
+    }
     setState('wait', 'Checking…');
     poll();
     timer = setInterval(poll, POLL_MS);

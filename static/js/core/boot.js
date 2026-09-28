@@ -18,7 +18,7 @@
 // Performance marks (orion-boot-start / -ready / -end) record the timeline.
 
 import { $, local } from './dom.js';
-import { online } from './api.js';
+import { online, isStatic } from './api.js';
 
 const FIRST_VISIT_MIN_MS = 1000;
 const RETURN_VISIT_MIN_MS = 350;
@@ -83,7 +83,9 @@ export async function runBoot(work) {
       setProgress(1);
       if (!online) {
         setState('offline');
-        setStatus('Orion server unavailable — using settings saved in this browser.');
+        setStatus(isStatic
+          ? 'Static edition — Orion server unavailable. Settings are saved in this browser.'
+          : 'Orion server unavailable — using settings saved in this browser.');
         await wait(NOTICE_MS);
       } else {
         setState('ready');

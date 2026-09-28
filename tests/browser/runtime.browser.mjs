@@ -122,7 +122,7 @@ try {
         winId: wid,
         src: ifr ? ifr.getAttribute('src') : null,
         sandbox: ifr ? ifr.getAttribute('sandbox') : null,
-        handoff: el?.querySelector('.frame-placeholder h2')?.textContent ?? null,
+        handoff: el?.querySelector('.frame-placeholder')?.textContent ?? null,
         controls: [...(el?.querySelectorAll('.win-app-controls button') || [])].map((b) => b.title),
         hooks: w?.instance ? Object.keys(w.instance).sort() : [],
       };
@@ -144,15 +144,35 @@ try {
   check('embed: same frame, sandbox, controls and lifecycle as direct',
     isDirect(embed) && embed.sandbox === direct.sandbox && JSON.stringify(embed.controls) === JSON.stringify(direct.controls) && JSON.stringify(embed.hooks) === JSON.stringify(direct.hooks), JSON.stringify(embed));
   const ext = await launch(xId);
-  check('external: Orion hand-off screen, no iframe', ext.src === null && /opens in Orion/.test(ext.handoff || ''), JSON.stringify(ext));
-  check('external: lifecycle object is { onArgs }', JSON.stringify(ext.hooks) === '["onArgs"]', JSON.stringify(ext.hooks));
+  // Beta 0.1: "external" hands the site to the user's normal browser (it no
+  // longer offers an in-Orion hand-off), and only ever opens the app's own target.
+  check('external: browser hand-off screen, no iframe', ext.src === null && /opens in a normal browser tab/.test(ext.handoff || ''), JSON.stringify(ext));
+  check('external: no lifecycle hooks (it loads nothing)', JSON.stringify(ext.hooks) === '[]', JSON.stringify(ext.hooks));
   const handoff = await page.evaluate(async ([wid, site]) => {
+    const opened = [];
+    const realOpen = window.open;
+    window.open = (...a) => { opened.push(a); return null; };
     document.querySelector(`.window[data-id="${wid}"] .frame-actions .btn.primary`).click();
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, 300));
+    window.open = realOpen;
     const orion = [...window.ltf.wm.windows.values()].filter((w) => w.appId === 'orion');
-    return { orion: orion.length, appClosed: !window.ltf.wm.windows.has(wid), site };
+    return { opened, orion: orion.length, appOpen: window.ltf.wm.windows.has(wid), site };
   }, [ext.winId, SITE]);
-  check('external: "Open in Orion" opens Orion and closes the app window', handoff.orion === 1 && handoff.appClosed, JSON.stringify(handoff));
+  check('external: the primary action opens the target in a new browser tab (noopener)',
+    handoff.opened.length === 1 && handoff.opened[0][0] === SITE && handoff.opened[0][1] === '_blank' && /noopener/.test(handoff.opened[0][2]), JSON.stringify(handoff));
+  check('external: no Orion browser window is opened; the launcher stays for relaunch', handoff.orion === 0 && handoff.appOpen, JSON.stringify(handoff));
+  await closeWin(ext.winId);
+  const redirected = await launch(xId, { url: 'https://evil.example/' });
+  const redirOpen = await page.evaluate(async (wid) => {
+    const opened = [];
+    const realOpen = window.open;
+    window.open = (...a) => { opened.push(a); return null; };
+    document.querySelector(`.window[data-id="${wid}"] .frame-actions .btn.primary`).click();
+    window.open = realOpen;
+    return { opened, text: document.querySelector(`.window[data-id="${wid}"] .frame-notice`).textContent };
+  }, redirected.winId);
+  check('external: a launch-arg url cannot redirect the destination', redirOpen.opened.length === 1 && redirOpen.opened[0][0] === SITE && !redirOpen.text.includes('evil.example'), JSON.stringify(redirOpen));
+  await closeWin(redirected.winId);
   await page.evaluate(() => [...window.ltf.wm.windows.values()].filter((w) => w.appId === 'orion').forEach((w) => window.ltf.wm.close(w.id)));
   await closeWin(direct.winId); await closeWin(embed.winId);
 
@@ -167,7 +187,7 @@ try {
   const isoArg = await launch(dId, { proxy: 'isolated' });
   check('proxy: launch-arg proxy isolated → /proxy/page', isIsolated(isoArg), JSON.stringify(isoArg));
   const extIso = await launch(xId, { proxy: 'isolated' });
-  check('proxy: external + proxy isolated is still a hand-off (proxy is not a runtime)', extIso.src === null && /opens in Orion/.test(extIso.handoff || ''), JSON.stringify(extIso));
+  check('proxy: external + proxy isolated is still a hand-off (proxy is not a runtime)', extIso.src === null && /opens in a normal browser tab/.test(extIso.handoff || ''), JSON.stringify(extIso));
   const proxied = await page.evaluate((u) => fetch(`/proxy/page?url=${encodeURIComponent(u)}`).then((r) => r.headers.get('content-security-policy')), SITE);
   check('proxy: /proxy/page sandbox CSP unchanged (no allow-same-origin)', /^sandbox /.test(proxied || '') && !proxied.includes('allow-same-origin'), proxied);
   await closeWin(isoArg.winId); await closeWin(extIso.winId);
@@ -245,7 +265,7 @@ try {
     await closeWin(r.winId);
   }
   const argExt = await launch(dId, { runtime: 'external' });
-  check('launch arg runtime "external" is honoured', argExt.src === null && /opens in Orion/.test(argExt.handoff || ''), JSON.stringify(argExt));
+  check('launch arg runtime "external" is honoured', argExt.src === null && /opens in a normal browser tab/.test(argExt.handoff || ''), JSON.stringify(argExt));
   await closeWin(argExt.winId);
   const argEmbed = await launch(xId, { runtime: 'embed' });
   check('launch arg runtime "embed" is honoured', isDirect(argEmbed), JSON.stringify(argEmbed));

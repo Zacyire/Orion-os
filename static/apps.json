@@ -23,21 +23,14 @@
     "type": "web-app",
     "icon": "netflix",
     "category": "Entertainment",
-    "description": "Streaming, as a dedicated app window.",
+    "description": "Netflix, opened in your browser. netflix.com doesn’t allow being shown inside other sites, so Orion hands it to a normal browser tab.",
     "developer": "Orion OS",
     "default_size": [
       1200,
       740
     ],
-    "target": "https://cinejoy.pk/",
-    "navigation": "limited",
-    "addressBar": false,
-    "browserControls": false,
-    "controls": [
-      "reload",
-      "home",
-      "external"
-    ]
+    "target": "https://www.netflix.com/",
+    "runtime": "external"
   },
   {
     "id": "youtube",
@@ -87,6 +80,36 @@
     "panel": "geforcenow",
     "allow": "autoplay; fullscreen; gamepad; keyboard-map; clipboard-read; clipboard-write; microphone; camera",
     "sandbox": null
+  },
+  {
+    "id": "roblox",
+    "name": "Roblox",
+    "type": "web-app",
+    "icon": "gamepad",
+    "category": "Games",
+    "description": "Roblox through the configured cloud-streaming page (172.ip.nowgg.fun), opened in your browser. Orion doesn’t host, stream or route it.",
+    "developer": "Roblox Corporation",
+    "default_size": [
+      720,
+      520
+    ],
+    "target": "https://172.ip.nowgg.fun/apps/a/19900/b.html",
+    "runtime": "external"
+  },
+  {
+    "id": "cinejoy",
+    "name": "CineJoy",
+    "type": "web-app",
+    "icon": "play",
+    "category": "Entertainment",
+    "description": "The CineJoy website (cinejoy.pk), opened in your browser. It’s a third-party site: Orion doesn’t host, stream or check its content.",
+    "developer": "cinejoy.pk (third party)",
+    "default_size": [
+      720,
+      520
+    ],
+    "target": "https://cinejoy.pk/",
+    "runtime": "external"
   },
   {
     "id": "spiceify",

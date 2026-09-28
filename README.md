@@ -38,6 +38,18 @@ cargo run --release
 | `YOUTUBE_API_KEY` | *(unset)* | YouTube Data API v3 key. Enables search in the YouTube app. |
 | `RUST_LOG` | `ltf_os=info` | Log filter. Web-layer events are logged under `ltf_os::web`. |
 
+### Beta 0.1
+
+Orion OS Beta 0.1 is a working desktop:
+- **Entry and desktop:** splash, first-visit welcome, desktop, launcher and dock.
+- **Apps:** Orion browser, YouTube, GeForce NOW, Spiceify, Notepad, App Store, Settings, and the Clock, System Monitor and Network widgets.
+- **Games:** Vapor, the gaming hub, with *Local Gaming* (Recently Played, Installed, Available, Favorites, Categories) and *Cloud Gaming*.
+- **Browser launchers:** Roblox, CineJoy and Netflix.
+
+Sites that don't permit embedding aren't forced into windows: their Orion app opens them in your normal browser. Orion never proxies or rewrites them, and `LTF_PROXY=0` stays the production default.
+
+It runs as the **full edition** (Rust server) or the **static edition** (GitHub Pages, no server). See [docs/static-edition.md](docs/static-edition.md).
+
 ### Putting it online
 
 Orion OS runs as a normal HTTPS website on your own server (a VPS behind Caddy or nginx, with `LTF_MODE=production` and an access key). It is not deployed through GitHub or GitHub Pages; the repository stays private.

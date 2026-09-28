@@ -10,6 +10,16 @@ import { bus } from './events.js';
 export let online = true;
 
 /**
+ * Edition: "static" when the page was built by tools/build-static.sh (GitHub
+ * Pages — HTML/CSS/JS only, no Rust server), otherwise "full". The static
+ * edition never calls /api or /ws: every server request fails fast and
+ * honestly (code SERVER_UNAVAILABLE) and callers fall back to what this
+ * browser has, exactly as they do when a full server is unreachable.
+ */
+export const edition = typeof document !== 'undefined' && document.querySelector('meta[name="orion-edition"]')?.content === 'static' ? 'static' : 'full';
+export const isStatic = edition === 'static';
+
+/**
  * Optional `timeout` (ms): a deadline covering the whole exchange, headers and
  * body. Used for boot-time requests so a server that accepts the connection
  * but never answers can't hold startup forever. Without it, behaviour is
@@ -27,6 +37,13 @@ async function request(method, path, body, { timeout = 0, ...options } = {}) {
 }
 
 async function send(method, path, body, { raw = false, headers = {}, signal } = {}) {
+  if (isStatic) {
+    setOnline(false);
+    const err = new Error('The Orion server isn’t part of the static edition.');
+    err.code = 'SERVER_UNAVAILABLE';
+    err.status = 0;
+    throw err;
+  }
   const opts = { method, headers: { 'X-LTF-Client': '1', ...headers } };
   if (signal) opts.signal = signal;
   if (body instanceof FormData || typeof body === 'string' || body instanceof Blob) {
@@ -94,11 +111,19 @@ export const api = {
   patch: (p, b, o) => request('PATCH', p, b, o),
   del: (p, o) => request('DELETE', p, undefined, o),
 
-  /** Creator content catalogue (content/<kind>.json); empty when offline. */
+  /**
+   * Creator content catalogue (content/<kind>.json). From the server when
+   * there is one; otherwise the static copy published next to the page
+   * (static edition); otherwise empty.
+   */
   async content(kind, opts) {
     try {
       return await api.get(`/content/${kind}`, opts);
     } catch {
+      try {
+        const res = await fetch(`content/${encodeURIComponent(kind)}.json`, { cache: 'no-cache' });
+        if (res.ok) return await res.json();
+      } catch { /* not published either */ }
       return { items: [] };
     }
   },
@@ -119,6 +144,7 @@ export const api = {
 
   /** Round-trip latency to the API server in ms (median of `n` pings). */
   async latency(n = 3) {
+    if (isStatic) throw Object.assign(new Error('No Orion server in the static edition.'), { code: 'SERVER_UNAVAILABLE' });
     const samples = [];
     for (let i = 0; i < n; i++) {
       const t0 = performance.now();
@@ -147,6 +173,7 @@ export const api = {
 let retry = 1000;
 
 export function connectEvents() {
+  if (isStatic) return; // no server, no event stream
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   let ws;
   try {

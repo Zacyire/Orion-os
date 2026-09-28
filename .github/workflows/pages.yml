@@ -1,0 +1,63 @@
+# Orion OS — static edition on GitHub Pages.
+#
+#   git push → check (syntax + contract tests) → build (tools/build-static.sh)
+#            → deploy to GitHub Pages
+#
+# The static edition is the frontend only (HTML/CSS/JS, content catalogues).
+# No secrets are used or needed: nothing from src/, deploy/, data/ or any
+# credential is part of the build, and build-static.sh fails if one appears.
+#
+# One-time setup (repository settings): Pages → Source → "GitHub Actions".
+# Pull requests are checked and built but never deployed.
+
+name: Static edition (GitHub Pages)
+
+on:
+  push:
+    branches: [main, claude/busy-hypatia-bfhego]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check frontend syntax
+        run: |
+          git ls-files -- 'static/*.js' | while read -r f; do node --check "$f"; done
+
+      - name: Contract tests (runtime, security, design tokens, static build)
+        run: node --test tests/*.test.mjs
+
+      - name: Build the static edition
+        run: ./tools/build-static.sh _site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

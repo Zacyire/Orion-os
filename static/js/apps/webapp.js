@@ -8,8 +8,9 @@
 //                  "direct"   — load target in the existing sandboxed iframe
 //                  "embed"    — same container; target is a provider-supplied
 //                               embed URL (e.g. an official player)
-//                  "external" — don't embed; show an "Open in Orion" screen
-//                               (for sites that can't or shouldn't be framed)
+//                  "external" — don't embed; a launcher screen that opens the
+//                               site in the user's normal browser (for sites
+//                               that don't permit framing)
 //   target       URL the app opens (required)                 "https://example.com/"
 //   navigation   "limited" (default): the site navigates within itself; links to
 //                other sites open in Orion. "none": pinned to the target page.
@@ -23,12 +24,13 @@
 //   panel        module in apps/panels/ shown by the "panel" control
 //   suspendOnMinimize  unload the page while minimized to save memory/CPU
 //
-// Launch args override: { url, title, runtime, proxy, allow, size }.
+// Launch args override: { url, title, runtime, proxy, allow, size } — except
+// that the external runtime always uses the registry target (never args.url).
 // There is deliberately no address bar, tab strip or history UI here —
 // Orion ("type": "browser") is the only general-purpose browser.
 
 import { h } from '../core/dom.js';
-import { icons } from '../core/icons.js';
+import { icons, appIcon } from '../core/icons.js';
 import { createFrame } from '../core/frame.js';
 import { RUNTIMES, normalizeRuntime } from '../core/runtimes.js';
 import { trustedModule } from '../core/modules.js';
@@ -87,12 +89,18 @@ export function mountWithHandlers(root, ctx, handlers = RUNTIME_HANDLERS) {
   const args = ctx.args || {};
   if (args.title) ctx.win.setTitle(args.title);
 
+  // Built-in apps whose registry runtime is "external" are pinned: they are
+  // operator-configured launcher entries (e.g. Roblox, CineJoy), so launch
+  // arguments can change neither their destination nor their runtime (no
+  // switching them into a frame, a proxy mode or another URL). User-created
+  // local apps keep the documented launch-arg overrides.
+  const pinned = app.runtime === 'external' && !app.local;
   const env = {
     root, ctx, app, args,
-    target: args.url || app.target,
-    isolated: args.proxy === true || args.proxy === 'isolated' || app.proxy === 'isolated',
+    target: pinned ? app.target : args.url || app.target,
+    isolated: !pinned && (args.proxy === true || args.proxy === 'isolated' || app.proxy === 'isolated'),
   };
-  const { id, handler } = resolveRuntime(args.runtime || app.runtime, handlers);
+  const { id, handler } = resolveRuntime(pinned ? app.runtime : args.runtime || app.runtime, handlers);
   // Defined but unhandled: refuse to render rather than silently loading the
   // target through some other runtime's path.
   if (!handler) return mountUnavailable(env, id);
@@ -120,27 +128,33 @@ function mountUnavailable({ root }, id) {
   )));
 }
 
-// "external" runtime: never embed — present an Orion hand-off instead. Used
-// for sites that decline framing, so the app degrades gracefully rather
-// than showing a broken frame. No network request is made here.
-function mountExternal({ root, ctx, app, target }) {
-  ctx.win.setControls([{ icon: 'external', title: 'Open in browser tab', onClick: () => window.open(target, '_blank', 'noopener') }]);
+// "external" runtime: never embed — hand the site to the user's normal
+// browser. Used for destinations that don't permit framing (or can't be
+// verified to), so the app is a launcher rather than a broken frame. Orion
+// makes no network request and routes nothing: the browser opens the site
+// directly, under its usual settings and network rules.
+//
+// The destination is always the registry's own `target` (operator-controlled
+// for built-in apps, user-entered only for the user's own local apps). Launch
+// arguments can never redirect it — `args.url` is ignored for this runtime.
+function mountExternal({ root, ctx, app }) {
+  const target = app.target;
+  const host = (() => { try { return new URL(target).host; } catch { return ''; } })();
+  const open = () => { if (host) window.open(target, '_blank', 'noopener,noreferrer'); };
+  ctx.win.setControls([{ icon: 'external', title: 'Open in browser', onClick: open }]);
   const container = h('div.app.webapp');
-  const host = (() => { try { return new URL(target).host; } catch { return target; } })();
-  container.append(h('div.frame-notice.frame-placeholder',
-    h('div.frame-error-icon', { html: icons.globe }),
-    h('h2', `${app.name} opens in Orion`),
-    h('p', 'This app is configured to open its site in the Orion browser, where full navigation is available.'),
-    h('code', host),
+  container.append(h('div.frame-notice.frame-placeholder.frame-external',
+    h('div.frame-external-icon', appIcon(app, 'lg')),
+    h('h2', app.name),
+    h('p', `${app.name} opens in a normal browser tab. Your browser’s usual settings and network rules apply.`),
+    host ? h('code', host) : h('code', 'no address configured'),
     h('div.frame-actions',
-      h('button.btn.primary', { onclick: () => { ctx.open('orion', { url: target }); ctx.win.close(); } }, h('span', { html: icons.globe }), 'Open in Orion'),
-      h('button.btn', { onclick: () => window.open(target, '_blank', 'noopener') }, h('span', { html: icons.external }), 'Open in browser tab'),
+      h('button.btn.primary', { onclick: open, disabled: !host }, h('span', { html: icons.external }), `Open ${app.name}`),
     ),
+    h('p.frame-external-note', 'Orion OS doesn’t host, run or route this site.'),
   ));
   root.append(container);
-  return {
-    onArgs(a) { if (a.url) ctx.open('orion', { url: a.url }); },
-  };
+  return {};
 }
 
 // "direct" / "embed" runtimes: the shared AppFrame (core/frame.js), which owns

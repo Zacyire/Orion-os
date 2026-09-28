@@ -179,7 +179,20 @@ export const tileColors = {
   appstore: ['#2f7bff', '#00c6ff'],
   settings: ['#5f6b80', '#343c4b'],
   notepad: ['#2fbf8f', '#1a8a78'],
+  roblox: ['#4a5264', '#171a22'],
+  cinejoy: ['#ff7a45', '#b3175f'],
 };
+
+/** Apps that open in the user's browser (runtime "external") carry a small ↗ badge. */
+function markExternal(el, app) {
+  if (app.runtime !== 'external') return;
+  el.classList.add('is-external');
+  const badge = document.createElement('span');
+  badge.className = 'app-icon-ext';
+  badge.title = 'Opens in your browser';
+  badge.innerHTML = icons.external;
+  el.appendChild(badge);
+}
 
 /** Build an app tile element (`<div class="app-icon">`). */
 export function appIcon(app, size = '') {
@@ -189,6 +202,7 @@ export function appIcon(app, size = '') {
   if (art) {
     el.classList.add('art');
     el.innerHTML = art.replaceAll('__ID__', `-${++artSeq}`);
+    markExternal(el, app);
     return el;
   }
   // User-supplied icon URL (web-app installer). Falls back to a glyph on error.
@@ -206,6 +220,7 @@ export function appIcon(app, size = '') {
   el.style.setProperty('--tile-a', a);
   el.style.setProperty('--tile-b', b);
   el.innerHTML = icons[app.icon === 'web' ? 'globe' : app.icon] || icons.grid;
+  markExternal(el, app);
   return el;
 }
 

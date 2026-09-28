@@ -24,3 +24,16 @@
 
 /* Iframes swallow pointer events; disable them while the WM drags/resizes. */
 body.wm-interacting iframe, body.is-dragging iframe { pointer-events: none; }
+
+/* External launcher screen (runtime "external"): a finished hand-off to the
+   user's browser — the app's tile, what will happen, one primary action. */
+.frame-notice.frame-external {
+  outline: none;
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 30%, var(--accent-color-faint), transparent 70%),
+    var(--surface-solid);
+}
+.frame-external .frame-external-icon .app-icon.lg { width: 76px; height: 76px; border-radius: 24%; box-shadow: var(--elev-3), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.frame-external h2 { font-family: var(--font-display); font-size: 26px; }
+.frame-external .frame-actions .btn { height: 40px; padding: 0 20px; font-size: var(--fs); }
+.frame-external-note { font-size: var(--fs-xs) !important; color: var(--text-3) !important; }

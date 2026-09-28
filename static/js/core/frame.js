@@ -45,6 +45,7 @@ export const ERRORS = {
   PROXY_ERROR: { icon: 'info', title: 'Unable to load content', text: 'The content service couldn’t complete the request.' },
   PROXY_DISABLED: { icon: 'shield', title: 'Content service disabled', text: 'Isolated mode and remote fetching are turned off on this server.' },
   SERVER_ERROR: { icon: 'info', title: 'Orion OS server unavailable', text: 'The Orion OS server didn’t respond. It may be restarting.' },
+  SERVER_UNAVAILABLE: { icon: 'external', title: 'Opens in your browser', text: 'Without the Orion server, Orion can’t check whether this site allows being shown in a window, so it opens in a normal browser tab instead.' },
   UNSUPPORTED_CONTENT: { icon: 'file', title: 'Unsupported content', text: 'This content can’t be displayed in an app window.' },
   RATE_LIMITED: { icon: 'clock', title: 'Too many requests', text: 'Please wait a moment and try again.' },
   TOO_LARGE: { icon: 'file', title: 'Content too large', text: 'This content exceeds the size limit for app windows.' },
@@ -103,13 +104,14 @@ export function createFrame(opts = {}) {
       h('div.frame-error-icon', { html: icons[e.icon] || icons.info }),
       h('h2', e.title),
       h('p', e.text),
-      detail ? h('p.frame-error-detail', detail) : null,
+      detail && code !== 'SERVER_UNAVAILABLE' ? h('p.frame-error-detail', detail) : null,
       h('code', code === 'NOT_CONFIGURED' ? slot : code),
       h('div.frame-actions',
-        code !== 'NOT_CONFIGURED' && code !== 'INVALID_URL' && code !== 'BLOCKED_REQUEST'
+        // No server (static edition): retrying can't help; the browser is the path.
+        code !== 'NOT_CONFIGURED' && code !== 'INVALID_URL' && code !== 'BLOCKED_REQUEST' && code !== 'SERVER_UNAVAILABLE'
           ? h('button.btn.primary', { onclick: () => api_.reload() }, h('span', { html: icons.refresh }), 'Retry') : null,
         url && isRemote(url) && code !== 'BLOCKED_REQUEST' && code !== 'INVALID_URL'
-          ? h('button.btn', { onclick: () => window.open(url, '_blank', 'noopener') }, h('span', { html: icons.external }), 'Open in browser tab') : null,
+          ? h(`button.btn${code === 'SERVER_UNAVAILABLE' ? '.primary' : ''}`, { onclick: () => window.open(url, '_blank', 'noopener') }, h('span', { html: icons.external }), 'Open in browser tab') : null,
       ),
     );
     onError?.(code, { url, detail });

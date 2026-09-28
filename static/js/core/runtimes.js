@@ -22,7 +22,7 @@ export const DEFAULT_RUNTIME = 'direct';
 export const RUNTIME_DEFS = Object.freeze([
   { id: 'direct', label: 'Direct — show the site in the app window' },
   { id: 'embed', label: 'Embed — target is a provider embed URL' },
-  { id: 'external', label: 'External — open the site in Orion' },
+  { id: 'external', label: 'External — open the site in your browser' },
 ].map((r) => Object.freeze(r)));
 
 /** Known runtime ids, in display order. */

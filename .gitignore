@@ -9,3 +9,6 @@
 access-key
 *.pem
 *.key
+
+# Static edition build output (tools/build-static.sh)
+/_site/

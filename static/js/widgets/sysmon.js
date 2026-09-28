@@ -11,7 +11,7 @@
 
 import { h } from '../core/dom.js';
 import { icons } from '../core/icons.js';
-import { api } from '../core/api.js';
+import { api, isStatic } from '../core/api.js';
 
 const POLL_MS = 2000; // modest: the backend re-samples CPU at most ~5×/s anyway
 
@@ -133,12 +133,17 @@ export const sysmon = {
       } catch {
         if (disposed) return;
         // Keep the last good values; just flag the connection.
-        setStatus('off', haveData ? 'Offline · retrying' : 'Unavailable');
+        setStatus('off', haveData ? 'Offline · retrying' : 'Server unavailable');
       } finally {
         inFlight = false;
       }
     }
 
+    // Static edition: there is no server to measure — say so, don't poll.
+    if (isStatic) {
+      setStatus('off', 'Server unavailable');
+      return () => { disposed = true; };
+    }
     setStatus('wait', 'Starting…');
     poll();
     timer = setInterval(poll, POLL_MS);
