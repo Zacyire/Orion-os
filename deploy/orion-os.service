@@ -1,9 +1,9 @@
-# Orion OS private beta — systemd unit (optional; any process supervisor works).
-# Install the release binary at /opt/orion-os/ltf-os and the static/ and
-# content/ directories next to it. See docs/private-beta-deployment.md.
+# Orion OS — systemd unit. Install as /etc/systemd/system/orion-os.service.
+# deploy/update.sh installs the release binary at /opt/orion-os/ltf-os and
+# the static/ and content/ directories next to it. See docs/deployment.md.
 
 [Unit]
-Description=Orion OS (private beta)
+Description=Orion OS
 After=network-online.target
 Wants=network-online.target
 

@@ -3,10 +3,10 @@
 //! Two deployment modes (`LTF_MODE`):
 //! * `development` (default) — unchanged local behaviour: binds `0.0.0.0`,
 //!   no access gate unless `LTF_ACCESS_KEY` is set, cookies without `Secure`.
-//! * `beta` — a private deployment behind an HTTPS reverse proxy. Binds
-//!   `127.0.0.1` by default and refuses to start unless an access key and at
-//!   least one trusted hostname are configured (see `Config::validate`).
-//!   See docs/private-beta-deployment.md.
+//! * `production` (alias: `beta`, its name before) — the live website behind
+//!   an HTTPS reverse proxy. Binds `127.0.0.1` by default and refuses to start
+//!   unless an access key and at least one trusted hostname are configured
+//!   (see `Config::validate`). See docs/deployment.md.
 
 use std::{
     fmt,
@@ -17,7 +17,7 @@ use std::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Development,
-    Beta,
+    Production,
 }
 
 /// A secret that never prints: `Debug` is redacted so a logged or
@@ -40,6 +40,15 @@ impl fmt::Debug for Secret {
     }
 }
 
+/// `LTF_MODE` value → mode. `beta` is the earlier name of `production`.
+pub fn parse_mode(value: Option<&str>) -> Result<Mode, String> {
+    match value.map(str::trim) {
+        None | Some("development") | Some("dev") => Ok(Mode::Development),
+        Some("production") | Some("beta") => Ok(Mode::Production),
+        Some(other) => Err(format!("LTF_MODE must be `development` or `production`, got {other:?}")),
+    }
+}
+
 /// Minimum access-key length. The key is the only credential, so it must be
 /// long enough that online guessing (already rate limited) is hopeless.
 pub const MIN_ACCESS_KEY_LEN: usize = 16;
@@ -48,7 +57,7 @@ pub const MIN_ACCESS_KEY_LEN: usize = 16;
 pub struct Config {
     pub mode: Mode,
     /// Listen address (`LTF_BIND`). Default `0.0.0.0` in development,
-    /// `127.0.0.1` in beta (only the local reverse proxy should connect).
+    /// `127.0.0.1` in production (only the local reverse proxy should connect).
     pub bind: IpAddr,
     pub port: u16,
     /// Mutable runtime state: preferences, installs, user documents.
@@ -81,9 +90,9 @@ pub struct Config {
     /// Extra exact hostnames trusted in `Host` (`LTF_ALLOWED_HOSTS`, comma-
     /// separated) on top of `localhost` and IP literals. See src/hosts.rs.
     pub allowed_hosts: Vec<String>,
-    /// Private-beta access key (`LTF_ACCESS_KEY`, or the first line of the
+    /// Access key (`LTF_ACCESS_KEY`, or the first line of the
     /// file named by `LTF_ACCESS_KEY_FILE`). `Some` enables the access gate
-    /// (src/auth.rs) in any mode; required in beta.
+    /// (src/auth.rs) in any mode; required in production.
     pub access_key: Option<Secret>,
     /// Signed-in session lifetime in hours (`LTF_SESSION_HOURS`, 1–720, default 168).
     pub session_hours: u64,
@@ -95,20 +104,16 @@ impl Config {
     pub fn from_env() -> Self {
         let var = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
         let mut errors = Vec::new();
-        let mode = match var("LTF_MODE").as_deref().map(str::trim) {
-            None | Some("development") | Some("dev") => Mode::Development,
-            Some("beta") => Mode::Beta,
-            Some(other) => {
-                errors.push(format!("LTF_MODE must be `development` or `beta`, got {other:?}"));
-                Mode::Beta // fail closed: validate() refuses to start anyway
-            }
-        };
+        let mode = parse_mode(var("LTF_MODE").as_deref()).unwrap_or_else(|e| {
+            errors.push(e);
+            Mode::Production // fail closed: validate() refuses to start anyway
+        });
         let bind = match var("LTF_BIND") {
             Some(v) => v.trim().parse().unwrap_or_else(|_| {
                 errors.push(format!("LTF_BIND must be an IP address, got {v:?}"));
                 IpAddr::V4(Ipv4Addr::LOCALHOST)
             }),
-            None if mode == Mode::Beta => IpAddr::V4(Ipv4Addr::LOCALHOST),
+            None if mode == Mode::Production => IpAddr::V4(Ipv4Addr::LOCALHOST),
             None => IpAddr::V4(Ipv4Addr::UNSPECIFIED),
         };
         let access_key = match (var("LTF_ACCESS_KEY"), var("LTF_ACCESS_KEY_FILE")) {
@@ -165,7 +170,7 @@ impl Config {
         }
     }
 
-    /// Refuse to start on unsafe or broken configuration. Beta mode fails
+    /// Refuse to start on unsafe or broken configuration. Production mode fails
     /// closed: no access key, no trusted hostname, or private-network proxying
     /// is an error, never a silent fallback.
     pub fn validate(&self) -> Result<(), String> {
@@ -173,15 +178,15 @@ impl Config {
         if self.access_key.as_ref().is_some_and(|k| k.expose().chars().count() < MIN_ACCESS_KEY_LEN) {
             errors.push(format!("the access key must be at least {MIN_ACCESS_KEY_LEN} characters"));
         }
-        if self.mode == Mode::Beta {
+        if self.mode == Mode::Production {
             if self.access_key.is_none() && !errors.iter().any(|e| e.contains("LTF_ACCESS_KEY")) {
-                errors.push("LTF_MODE=beta requires LTF_ACCESS_KEY or LTF_ACCESS_KEY_FILE".into());
+                errors.push("LTF_MODE=production requires LTF_ACCESS_KEY or LTF_ACCESS_KEY_FILE".into());
             }
             if crate::hosts::HostPolicy::new(&self.allowed_hosts).is_empty() {
-                errors.push("LTF_MODE=beta requires LTF_ALLOWED_HOSTS to name the beta hostname (e.g. beta.example.com)".into());
+                errors.push("LTF_MODE=production requires LTF_ALLOWED_HOSTS to name the site's hostname (e.g. orion.example.com)".into());
             }
             if self.proxy_allow_private {
-                errors.push("LTF_PROXY_ALLOW_PRIVATE is not allowed in beta mode".into());
+                errors.push("LTF_PROXY_ALLOW_PRIVATE is not allowed in production mode".into());
             }
         }
         if errors.is_empty() {
@@ -191,9 +196,9 @@ impl Config {
         }
     }
 
-    /// Session cookies carry `Secure` (and the `__Host-` prefix) in beta,
+    /// Session cookies carry `Secure` (and the `__Host-` prefix) in production,
     /// where the browser always reaches Orion OS over HTTPS.
     pub fn secure_cookies(&self) -> bool {
-        self.mode == Mode::Beta
+        self.mode == Mode::Production
     }
 }

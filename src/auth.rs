@@ -1,6 +1,6 @@
-//! Private-beta access gate.
+//! Access gate for the live site.
 //!
-//! Orion OS is a single-owner desktop, so private access is one shared
+//! Orion OS is a single-owner desktop, so access is one shared
 //! **access key** chosen by the operator (`LTF_ACCESS_KEY` /
 //! `LTF_ACCESS_KEY_FILE`) — no accounts, profiles or third-party login. When a
 //! key is configured, every route except `/login`, `/logout` and `/healthz`
@@ -17,10 +17,17 @@
 //! ```
 //!
 //! (`orion_session` without `Secure`/`__Host-` in development mode, which may
-//! run over plain http.) The token is HMAC-SHA256 over its expiry and a random
+//! run over plain http.) By default the sign-in is for **this browser session
+//! only**: the cookie has no `Max-Age` (gone when the browser closes) and the
+//! token itself expires after 12 hours — the safe choice on a shared or school
+//! computer. Ticking "Keep me signed in" gives a persistent cookie for
+//! `LTF_SESSION_HOURS` instead. The token is HMAC-SHA256 over its expiry and a random
 //! nonce, keyed from the access key, so sessions survive restarts and
 //! **changing the key signs everyone out**. `POST /logout` revokes the nonce
-//! for the rest of this process's life and expires the cookie.
+//! for the rest of this process's life and expires the cookie;
+//! `POST /logout?erase=1` also sends `Clear-Site-Data: "cache", "storage"` so
+//! the browser deletes Orion OS's local data (localStorage, caches, service
+//! worker) — for leaving a shared computer clean.
 //!
 //! The key never appears in URLs, logs, responses, frontend source, app
 //! manifests or WebSocket messages; `Config` holds it in a redacted `Secret`.
@@ -48,6 +55,9 @@ use crate::{config::Config, state::SharedState, web::limit::RateLimiter};
 
 /// Longest key accepted from the form (the configured key is far shorter).
 const MAX_KEY_LEN: usize = 1024;
+
+/// Lifetime of a sign-in without "Keep me signed in" (shared computers).
+const BROWSER_SESSION_SECS: u64 = 12 * 3600;
 
 /// A verified session, attached to the request for handlers that outlive it
 /// (the `/ws` event stream closes when its session expires or is revoked).
@@ -110,10 +120,10 @@ impl Gate {
         submitted.len() <= MAX_KEY_LEN && hmac::verify(&self.compare_key, submitted.as_bytes(), self.expected.as_ref()).is_ok()
     }
 
-    fn issue(&self) -> String {
+    fn issue(&self, lifetime_secs: u64) -> String {
         let mut nonce = [0u8; 18];
         self.rng.fill(&mut nonce).expect("system CSPRNG");
-        let body = format!("v1.{}.{}", now() + self.ttl.as_secs(), URL_SAFE_NO_PAD.encode(nonce));
+        let body = format!("v1.{}.{}", now() + lifetime_secs, URL_SAFE_NO_PAD.encode(nonce));
         let mac = hmac::sign(&self.session_key, body.as_bytes());
         format!("{body}.{}", URL_SAFE_NO_PAD.encode(mac.as_ref()))
     }
@@ -157,9 +167,11 @@ impl Gate {
             .find_map(|(_, v)| self.verify(v))
     }
 
-    fn set_cookie(&self, value: &str, max_age: u64) -> HeaderValue {
+    /// `max_age: None` = a browser-session cookie (deleted when the browser closes).
+    fn set_cookie(&self, value: &str, max_age: Option<u64>) -> HeaderValue {
         let secure = if self.secure { "; Secure" } else { "" };
-        HeaderValue::from_str(&format!("{}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure}", self.cookie_name()))
+        let max_age = max_age.map(|s| format!("; Max-Age={s}")).unwrap_or_default();
+        HeaderValue::from_str(&format!("{}={value}; Path=/; HttpOnly; SameSite=Lax{max_age}{secure}", self.cookie_name()))
             .expect("cookie is ASCII")
     }
 }
@@ -229,7 +241,7 @@ pub async fn login(State(state): State<SharedState>, req: Request) -> Response {
     let same_origin = crate::hosts::is_same_origin_request(&state.hosts, req.uri(), req.headers());
     // Read the (≤ 4 KiB) body before answering, even when refusing: replying
     // mid-upload makes streaming proxies (e.g. Caddy) report 502.
-    let key = read_key(req).await;
+    let (key, remember) = read_form(req).await;
     if !same_origin {
         tracing::warn!(%ip, "sign-in refused: missing or cross-origin Origin");
         return (StatusCode::FORBIDDEN, "cross-origin sign-in refused").into_response();
@@ -245,13 +257,19 @@ pub async fn login(State(state): State<SharedState>, req: Request) -> Response {
         tracing::warn!(%ip, "sign-in failed: wrong access key");
         return login_page(StatusCode::UNAUTHORIZED, Some("That access key isn’t right."));
     }
-    tracing::info!(%ip, "signed in");
+    tracing::info!(%ip, remember, "signed in");
+    let cookie = if remember {
+        gate.set_cookie(&gate.issue(gate.ttl.as_secs()), Some(gate.ttl.as_secs()))
+    } else {
+        gate.set_cookie(&gate.issue(BROWSER_SESSION_SECS.min(gate.ttl.as_secs())), None)
+    };
     let mut res = see_other("/");
-    res.headers_mut().insert(header::SET_COOKIE, gate.set_cookie(&gate.issue(), gate.ttl.as_secs()));
+    res.headers_mut().insert(header::SET_COOKIE, cookie);
     res
 }
 
-/// `POST /logout` — same-origin only; revokes the session and clears the cookie.
+/// `POST /logout` — same-origin only; revokes the session and clears the
+/// cookie. `?erase=1` also asks the browser to delete Orion OS's local data.
 pub async fn logout(State(state): State<SharedState>, req: Request) -> Response {
     let Some(gate) = &state.gate else {
         return StatusCode::NO_CONTENT.into_response();
@@ -263,8 +281,13 @@ pub async fn logout(State(state): State<SharedState>, req: Request) -> Response 
         gate.revoke(&s);
         tracing::info!("signed out");
     }
+    let erase = req.uri().query().is_some_and(|q| q.split('&').any(|p| p == "erase=1"));
     let mut res = StatusCode::NO_CONTENT.into_response();
-    res.headers_mut().insert(header::SET_COOKIE, gate.set_cookie("", 0));
+    res.headers_mut().insert(header::SET_COOKIE, gate.set_cookie("", Some(0)));
+    if erase {
+        // Not "cookies": that would clear every cookie for the host, and ours is already expired above.
+        res.headers_mut().insert("clear-site-data", HeaderValue::from_static("\"cache\", \"storage\""));
+    }
     res.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     res
 }
@@ -282,18 +305,30 @@ pub async fn healthz() -> Response {
     ([(header::CACHE_CONTROL, "no-store"), (header::CONTENT_TYPE, "text/plain")], "ok").into_response()
 }
 
-/// Read `key` from an `application/x-www-form-urlencoded` body (max 4 KiB).
-async fn read_key(req: Request) -> Option<String> {
+/// Read `key` and the "keep me signed in" box from an
+/// `application/x-www-form-urlencoded` body (max 4 KiB).
+async fn read_form(req: Request) -> (Option<String>, bool) {
     let is_form = req
         .headers()
         .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .is_some_and(|t| t.starts_with("application/x-www-form-urlencoded"));
-    let bytes = axum::body::to_bytes(req.into_body(), 4 * 1024).await.ok()?;
+    let Ok(bytes) = axum::body::to_bytes(req.into_body(), 4 * 1024).await else {
+        return (None, false);
+    };
     if !is_form {
-        return None;
+        return (None, false);
     }
-    url::form_urlencoded::parse(&bytes).find(|(k, _)| k == "key").map(|(_, v)| v.into_owned()).filter(|k| !k.is_empty())
+    let mut key = None;
+    let mut remember = false;
+    for (k, v) in url::form_urlencoded::parse(&bytes) {
+        match &*k {
+            "key" if !v.is_empty() => key = Some(v.into_owned()),
+            "remember" => remember = v == "1",
+            _ => {}
+        }
+    }
+    (key, remember)
 }
 
 fn see_other(to: &'static str) -> Response {
@@ -319,12 +354,15 @@ h1{{margin:0 0 4px;font-size:22px}}p{{margin:0 0 20px;color:var(--muted)}}label{
 input{{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit}}
 button{{margin-top:16px;width:100%;padding:10px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}}
 .err{{color:var(--err);margin:12px 0 0}}
+.check{{display:flex;gap:8px;align-items:center;font-weight:400;margin:14px 0 2px}}.check input{{width:auto}}small{{color:var(--muted);display:block}}
 </style></head><body>
 <form method="post" action="/login">
-<h1>Orion OS</h1><p>Private beta. Enter the access key to continue.</p>
+<h1>Orion OS</h1><p>Enter the access key to continue.</p>
 <input type="text" name="username" value="orion" autocomplete="username" hidden>
 <label for="key">Access key</label>
 <input id="key" name="key" type="password" autocomplete="current-password" required autofocus maxlength="{MAX_KEY_LEN}">
+<label class="check"><input type="checkbox" name="remember" value="1"> Keep me signed in on this device</label>
+<small>Leave unticked on shared or school computers: you'll be signed out when the browser closes.</small>
 {error}<button type="submit">Sign in</button>
 </form></body></html>"#
     );
@@ -349,7 +387,7 @@ mod tests {
 
     fn gate() -> Gate {
         let mut c = Config::from_env();
-        c.mode = crate::config::Mode::Beta;
+        c.mode = crate::config::Mode::Production;
         c.access_key = Some(crate::config::Secret::new("unit-test-access-key-123".into()));
         Gate::from_config(&c).unwrap()
     }
@@ -361,7 +399,7 @@ mod tests {
     #[test]
     fn issued_tokens_verify_and_expired_ones_do_not() {
         let g = gate();
-        assert!(g.verify(&g.issue()).is_some());
+        assert!(g.verify(&g.issue(3600)).is_some());
         // Correctly signed but expired a second ago.
         assert!(g.verify(&sign(&g, &format!("v1.{}.bm9uY2U", now() - 1))).is_none());
         // Correctly signed but malformed shapes.
@@ -383,8 +421,8 @@ mod tests {
     #[test]
     fn nonces_are_unique() {
         let g = gate();
-        let a = g.verify(&g.issue()).unwrap();
-        let b = g.verify(&g.issue()).unwrap();
+        let a = g.verify(&g.issue(3600)).unwrap();
+        let b = g.verify(&g.issue(3600)).unwrap();
         assert_ne!(a.nonce, b.nonce);
     }
 }

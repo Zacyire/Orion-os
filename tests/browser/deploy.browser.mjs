@@ -1,9 +1,11 @@
-// Private-beta deployment — end-to-end through a real HTTPS reverse proxy.
+// Production deployment — end-to-end through a real HTTPS reverse proxy.
 //
 //   cargo build && node tests/browser/deploy.browser.mjs
 //
-// Production-shaped and self-contained: a throwaway Orion OS server in beta
-// mode (LTF_MODE=beta, loopback bind, access key, trusted beta hostname)
+// Production-shaped and self-contained: a throwaway Orion OS server in production
+// mode — configured from deploy/orion-os.env.example itself (LTF_MODE=production,
+// loopback bind, LTF_PROXY=0, …), with only paths, ports, the hostname and a
+// throwaway access key file substituted —
 // behind nginx running deploy/nginx-orion-os.conf — the documented config,
 // with only placeholders (domain, ports, certificate paths) substituted. A
 // self-signed certificate is generated for the test hostname, and Chromium
@@ -77,7 +79,7 @@ execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days
 let proxyArgs;
 if (PROXY === 'nginx') {
   const site = fs.readFileSync(path.join(REPO, 'deploy/nginx-orion-os.conf'), 'utf8')
-    .replaceAll('YOUR_DOMAIN', HOSTNAME)
+    .replaceAll('orion.YOUR_DOMAIN', HOSTNAME)
     .replaceAll(`/etc/letsencrypt/live/${HOSTNAME}/fullchain.pem`, path.join(work, 'cert.pem'))
     .replaceAll(`/etc/letsencrypt/live/${HOSTNAME}/privkey.pem`, path.join(work, 'key.pem'))
     .replaceAll('listen 443 ssl', `listen 127.0.0.1:${tlsPort} ssl`)
@@ -100,24 +102,31 @@ http {
   proxyArgs = ['-p', work, '-c', path.join(work, 'nginx.conf')];
 } else {
   const site = fs.readFileSync(path.join(REPO, 'deploy/Caddyfile.example'), 'utf8')
-    .replace('YOUR_DOMAIN {', `YOUR_DOMAIN {\n\ttls ${path.join(work, 'cert.pem')} ${path.join(work, 'key.pem')}\n\tlog {\n\t\toutput file ${work}/proxy-access.log\n\t}`)
-    .replaceAll('YOUR_DOMAIN', HOSTNAME)
+    .replace('orion.YOUR_DOMAIN {', `orion.YOUR_DOMAIN {\n\ttls ${path.join(work, 'cert.pem')} ${path.join(work, 'key.pem')}\n\tlog {\n\t\toutput file ${work}/proxy-access.log\n\t}`)
+    .replaceAll('orion.YOUR_DOMAIN', HOSTNAME)
     .replaceAll('127.0.0.1:8080', `127.0.0.1:${appPort}`);
   fs.writeFileSync(path.join(work, 'Caddyfile'), `{\n\tadmin off\n\thttp_port ${httpPort}\n\thttps_port ${tlsPort}\n\tdefault_bind 127.0.0.1\n\tstorage file_system ${work}/caddy\n}\n\n${site}`);
   proxyArgs = ['run', '--config', path.join(work, 'Caddyfile'), '--adapter', 'caddyfile'];
 }
 
 let serverLog = '';
+// The documented production env file, as systemd would load it.
+const documentedEnv = Object.fromEntries(fs.readFileSync(path.join(REPO, 'deploy/orion-os.env.example'), 'utf8')
+  .split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#') && l.includes('='))
+  .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]));
+fs.writeFileSync(path.join(work, 'access-key'), KEY + '\n', { mode: 0o600 });
+const serverEnv = {
+  ...documentedEnv,
+  // substitutions only: placeholders, paths, ports, the key file, a local probe target, verbose logs
+  PORT: String(appPort), LTF_ALLOWED_HOSTS: HOSTNAME, LTF_ACCESS_KEY_FILE: path.join(work, 'access-key'),
+  LTF_DATA_DIR: dataDir, LTF_STATIC_DIR: path.join(REPO, 'static'), LTF_CONTENT_DIR: path.join(REPO, 'content'),
+  LTF_NETCHECK_URL: `http://127.0.0.1:${target.address().port}/`,
+  RUST_LOG: 'ltf_os=debug,tower_http=debug',
+};
+const { LTF_ACCESS_KEY: _unused, ...inherited } = process.env;
 const server = spawn(bin, [], {
   cwd: REPO,
-  env: {
-    ...process.env,
-    LTF_MODE: 'beta', LTF_BIND: '127.0.0.1', PORT: String(appPort),
-    LTF_ALLOWED_HOSTS: HOSTNAME, LTF_ACCESS_KEY: KEY, LTF_TRUST_PROXY_HEADERS: '1',
-    LTF_DATA_DIR: dataDir, LTF_STATIC_DIR: path.join(REPO, 'static'), LTF_CONTENT_DIR: path.join(REPO, 'content'),
-    LTF_NETCHECK_URL: `http://127.0.0.1:${target.address().port}/`,
-    RUST_LOG: 'ltf_os=debug,tower_http=debug',
-  },
+  env: { ...inherited, ...serverEnv },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 server.stdout.on('data', (d) => { serverLog += d; });
@@ -181,7 +190,8 @@ try {
     s.once('connect', () => { s.destroy(); resolve(true); });
     s.once('error', () => resolve(false));
   });
-  check('Orion OS backend is bound to loopback only in beta mode', !lanReachable);
+  check('production env example: LTF_MODE=production, loopback bind, web fetching off', documentedEnv.LTF_MODE === 'production' && documentedEnv.LTF_BIND === '127.0.0.1' && documentedEnv.LTF_PROXY === '0');
+  check('Orion OS backend is bound to loopback only in production mode', !lanReachable);
 
   // ── Host policy through the proxy ──
   // The proxy refuses a Host it doesn't serve (nginx: catch-all 421; Caddy:
@@ -244,6 +254,7 @@ try {
   const cookies = await ctx.cookies();
   const sess = cookies.find((c) => c.name === '__Host-orion_session');
   check('session cookie is __Host-, Secure, HttpOnly, SameSite=Lax, host-only', !!sess && sess.secure && sess.httpOnly && sess.sameSite === 'Lax' && sess.path === '/' && !sess.domain.startsWith('.'), JSON.stringify(sess));
+  check('default sign-in lasts only for this browser session (shared/school computers)', sess?.expires === -1, String(sess?.expires));
   check('session cookie is invisible to page script', await page.evaluate(() => !document.cookie.includes('orion_session')));
   check('page is a secure context', await page.evaluate(() => window.isSecureContext));
   const proto = await page.evaluate(() => performance.getEntriesByType('navigation')[0]?.nextHopProtocol);
@@ -353,6 +364,21 @@ try {
   const probeText = frameOk && probe ? await probe.evaluate(() => document.body.innerText).catch(() => '') : '';
   check('sandboxed iframe navigation (isolated-mode shape) is authenticated', probeText.includes('"pong"'), probeText.slice(0, 120));
 
+  const shellSource = await page.evaluate(() => fetch('/js/core/api.js').then((r) => r.text()));
+  check('frontend source contains no key', shellSource.includes('connectEvents') && !shellSource.includes(KEY));
+
+  // ── Server-side web fetching is off in the production config ──
+  const webLayer = await page.evaluate(async () => {
+    const p = await fetch('/proxy/page?url=' + encodeURIComponent('https://example.com/'));
+    const n = await fetch('/net/' + encodeURIComponent('https://example.com/'), { cache: 'no-store' });
+    return { p: p.status, pb: await p.text(), n: n.status, nb: await n.text() };
+  });
+  check('/proxy/page and /net refuse to fetch other sites (LTF_PROXY=0)', webLayer.pb.includes('PROXY_DISABLED') && webLayer.nb.includes('PROXY_DISABLED'), JSON.stringify(webLayer).slice(0, 200));
+  for (const [uri, label] of [['/api/system/stats', 'System stats'], ['/api/network/stats', 'Network stats']]) {
+    const r = await page.evaluate(async (u) => { const x = await fetch(u); return { s: x.status, j: await x.json().catch(() => null) }; }, uri);
+    check(`${label} API works through the proxy (${uri})`, r.s === 200 && r.j && typeof r.j.schema === 'number', JSON.stringify(r).slice(0, 160));
+  }
+
   // ── Persistence: server files + browser storage survive a reload ──
   const saved = await page.evaluate(async () => {
     await window.ltf.api?.files?.write?.('beta-check.txt', 'hello from the beta');
@@ -386,25 +412,53 @@ try {
   await page.waitForFunction(() => window.ltf?.wm, null, { timeout: 20000 });
   check('signing back in restores the desktop and local data', await page.evaluate(() => localStorage.getItem('ltf:beta-check') === 'kept'));
 
+  // ── "Keep me signed in" and "Erase & sign out" ──
+  await page.evaluate(() => fetch('/logout', { method: 'POST' }));
+  // The desktop's own 401 handler may already be navigating to the sign-in page.
+  await page.goto(`${ORIGIN}/`).catch(() => {});
+  await page.waitForSelector('#key', { timeout: 15000 });
+  await page.fill('#key', KEY);
+  await page.check('input[name="remember"]');
+  await Promise.all([page.waitForURL(`${ORIGIN}/`), page.click('button[type=submit]')]);
+  await page.waitForFunction(() => window.ltf?.wm, null, { timeout: 20000 });
+  const kept = (await ctx.cookies()).find((c) => c.name === '__Host-orion_session');
+  const days = kept ? (kept.expires - Date.now() / 1000) / 86400 : 0;
+  check('"Keep me signed in" gives a persistent cookie (~7 days)', days > 6.9 && days < 7.1, String(days));
+  const cachesBefore = await page.evaluate(async () => (await caches.keys()).length);
+  await page.evaluate(() => fetch('/logout?erase=1', { method: 'POST' }));
+  // The desktop navigates itself to the sign-in page on the next 401; check from there (same origin).
+  await page.goto(`${ORIGIN}/`).catch(() => {});
+  await page.waitForSelector('#key', { timeout: 15000 }).catch(() => {});
+  check('…and leaves the browser at the sign-in page', await page.locator('form[action="/login"]').count() === 1);
+  const erased = await page.evaluate(async () => ({
+    ls: localStorage.getItem('ltf:beta-check'),
+    caches: (await caches.keys()).length,
+    sw: (await navigator.serviceWorker.getRegistrations()).length,
+  }));
+  check('"Erase & sign out" deletes this browser\'s Orion data (localStorage, caches, service worker)', erased.ls === null && erased.caches === 0 && erased.sw === 0, `${JSON.stringify(erased)} (caches before: ${cachesBefore})`);
+  const serverFile = await rawHttps({ pathName: '/healthz' });
+  check('server-side data is untouched by a browser erase', serverFile.status === 200 && fs.existsSync(path.join(dataDir, 'files', 'beta-check.txt')));
+
   // ── Secrets never leak ──
   await sleep(300);
   const accessLog = fs.existsSync(path.join(work, 'proxy-access.log')) ? fs.readFileSync(path.join(work, 'proxy-access.log'), 'utf8') : '';
   check('access key never appears in server logs (debug level)', serverLog.length > 0 && !serverLog.includes(KEY));
   check('access key never appears in proxy access logs (URLs)', !accessLog.includes(KEY) && !accessLog.includes(encodeURIComponent(KEY)));
   check('access key never appears in any requested URL', !requestedUrls.some((u) => u.includes(KEY) || u.includes(encodeURIComponent(KEY))));
-  const shellSource = await page.evaluate(() => fetch('/js/core/api.js').then((r) => r.text()));
-  check('frontend source contains no key', !shellSource.includes(KEY));
   check('WebSocket frames contain no key', !shellSockets.flatMap((s) => s.frames).some((f) => f.includes(KEY)));
 
   // Expected noise: remote sites are unreachable offline, 401s are the gate
   // working (the old socket's reconnect after sign-out).
   const real = consoleErrors.filter((e) => !/net::ERR|ERR_TUNNEL|ERR_PROXY|ERR_ABORTED|ERR_NAME|Failed to load resource|youtube|google|nvidia|spotify/i.test(e)
-    && !/WebSocket connection to .*\/ws' failed: HTTP Authentication failed/.test(e));
+    && !/WebSocket connection to .*\/ws' failed: HTTP Authentication failed/.test(e)
+    // the browser's service-worker update check after sign-out
+    && !/bad HTTP response code \(401\) was received when fetching the script/.test(e));
   check('no unexpected console errors', real.length === 0, real.join(' | '));
 } catch (err) {
   fail++;
   console.log('FAIL — harness error ::', err.stack || err);
   try { console.log(fs.readFileSync(path.join(work, 'nginx-error.log'), 'utf8').slice(-2000)); } catch { /* none */ }
+  console.log('server log tail:', serverLog.replaceAll(KEY, '<key>').slice(-1500));
 } finally {
   await cleanup();
 }

@@ -19,12 +19,12 @@ cargo run --release
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `LTF_MODE` | `development` | `beta` for a private HTTPS deployment: loopback bind, access key and trusted hostname required. See [docs/private-beta-deployment.md](docs/private-beta-deployment.md). |
-| `LTF_BIND` | `0.0.0.0` (`127.0.0.1` in beta) | Listen address |
+| `LTF_MODE` | `development` | `production` for the live website: loopback bind, access key and trusted hostname required (`beta` is accepted as the old name). See [docs/deployment.md](docs/deployment.md). |
+| `LTF_BIND` | `0.0.0.0` (`127.0.0.1` in production) | Listen address |
 | `PORT` | `8080` | HTTP port |
 | `LTF_ALLOWED_HOSTS` | *(empty)* | Exact hostnames trusted in `Host` besides `localhost` and IP literals, e.g. `beta.example.com`. No wildcards. |
 | `LTF_ACCESS_KEY_FILE` / `LTF_ACCESS_KEY` | *(unset)* | Private access key (at least 16 characters). When set, every route except `/login`, `/logout` and `/healthz` requires signing in. Prefer the file form. |
-| `LTF_SESSION_HOURS` | `168` | Sign-in lifetime, from 1 to 720 hours |
+| `LTF_SESSION_HOURS` | `168` | Lifetime of "Keep me signed in", from 1 to 720 hours. Other sign-ins end when the browser closes, or after 12 hours at most. |
 | `LTF_DATA_DIR` | `data` | Runtime state: prefs, installs, web apps, Notepad documents |
 | `LTF_STATIC_DIR` | `static` | Frontend files |
 | `LTF_CONTENT_DIR` | `content` | Content catalogues (music, games, YouTube, wallpapers). Re-read on every request. |
@@ -38,9 +38,14 @@ cargo run --release
 | `YOUTUBE_API_KEY` | *(unset)* | YouTube Data API v3 key. Enables search in the YouTube app. |
 | `RUST_LOG` | `ltf_os=info` | Log filter. Web-layer events are logged under `ltf_os::web`. |
 
-### Private beta deployment
+### Putting it online
 
-To reach Orion OS from other devices over HTTPS without publishing anything, run it behind Caddy or nginx with `LTF_MODE=beta` and an access key. [docs/private-beta-deployment.md](docs/private-beta-deployment.md) is the guide; [`deploy/`](deploy) has the tested reference configs; [docs/private-beta-checklist.md](docs/private-beta-checklist.md) is the real-device checklist.
+Orion OS runs as a normal HTTPS website on your own server (a VPS behind Caddy or nginx, with `LTF_MODE=production` and an access key). It is not deployed through GitHub or GitHub Pages; the repository stays private.
+
+- [docs/put-orion-online.md](docs/put-orion-online.md): the beginner's step-by-step guide.
+- [docs/deployment.md](docs/deployment.md): the reference, covering configuration, DNS, firewall, updates, backups and troubleshooting.
+- [`deploy/`](deploy): the tested configs (Caddyfile, nginx, env file, systemd unit) and the `update.sh` and `backup.sh` scripts.
+- [docs/deployment-checklist.md](docs/deployment-checklist.md): a checklist for testing on real devices.
 
 ## The desktop
 

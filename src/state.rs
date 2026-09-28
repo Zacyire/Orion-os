@@ -51,7 +51,7 @@ pub struct AppState {
     pub netstats: NetSampler,
     /// Trusted `Host` values (DNS-rebinding defence), from config.
     pub hosts: HostPolicy,
-    /// Private-beta access gate; `None` when no access key is configured.
+    /// Access gate (src/auth.rs); `None` when no access key is configured.
     pub gate: Option<crate::auth::Gate>,
     /// Serialises disk writes so concurrent saves never interleave.
     write_lock: Mutex<()>,
@@ -95,7 +95,7 @@ impl AppState {
 
         let netstats = NetSampler::new(config.netcheck_url.clone());
         let mut hosts = HostPolicy::new(&config.allowed_hosts);
-        if config.mode == crate::config::Mode::Beta {
+        if config.mode == crate::config::Mode::Production {
             hosts = hosts.https_origins_only();
         }
         let gate = crate::auth::Gate::from_config(&config);

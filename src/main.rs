@@ -120,7 +120,7 @@ fn build_app(state: state::SharedState) -> Router {
         .fallback_service(ServeDir::new(&static_dir).append_index_html_on_directories(true))
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
-        // Private-beta access gate (no-op without an access key). Runs after the
+        // Access gate (no-op without an access key). Runs after the
         // Host check, before every route, including /ws and static files.
         .layer(middleware::from_fn_with_state(state.clone(), auth::require_access))
         // Outermost: refuse untrusted Host values before any route runs.
@@ -687,13 +687,13 @@ mod tests {
         assert!(String::from_utf8_lossy(&body).contains("<html"));
     }
 
-    // ── Private beta: deployment config, access gate, Host/Origin under beta ──
+    // ── Production mode: deployment config, access gate, Host/Origin ──
 
     const BETA_HOST: &str = "beta.orion.test";
     const BETA_KEY: &str = "correct-horse-battery-staple-42";
 
     fn beta(c: &mut Config) {
-        c.mode = config::Mode::Beta;
+        c.mode = config::Mode::Production;
         c.allowed_hosts = vec![BETA_HOST.into()];
         c.access_key = Some(config::Secret::new(BETA_KEY.into()));
     }
@@ -780,7 +780,8 @@ mod tests {
     #[tokio::test]
     async fn beta_sign_in_works_and_cookie_is_hardened() {
         let app = test_app_with(beta).await;
-        let (s, h, _) = beta_req(&app, "POST", "/login", Some(BETA_ORIGIN), None, Some(&format!("key={BETA_KEY}")), true).await;
+        // "Keep me signed in" → persistent cookie for LTF_SESSION_HOURS (default 7 days).
+        let (s, h, _) = beta_req(&app, "POST", "/login", Some(BETA_ORIGIN), None, Some(&format!("key={BETA_KEY}&remember=1")), true).await;
         assert_eq!(s, StatusCode::SEE_OTHER);
         let set = h[header::SET_COOKIE].to_str().unwrap();
         for attr in ["__Host-orion_session=", "Path=/", "HttpOnly", "Secure", "SameSite=Lax", "Max-Age=604800"] {
@@ -987,5 +988,68 @@ mod tests {
         assert_eq!(c.mode, config::Mode::Development);
         assert_eq!(c.bind, std::net::IpAddr::from([0, 0, 0, 0]), "development still binds all interfaces");
         assert!(!c.secure_cookies());
+    }
+
+    fn token_expiry(set_cookie: &str) -> u64 {
+        let value = set_cookie.split(';').next().unwrap().split_once('=').unwrap().1;
+        value.split('.').nth(1).unwrap().parse().unwrap()
+    }
+
+    #[tokio::test]
+    async fn default_sign_in_is_for_this_browser_session_only() {
+        // Shared/school computers: without "Keep me signed in" the cookie has no
+        // Max-Age (dropped when the browser closes) and the token lasts ≤ 12 h.
+        let app = test_app_with(beta).await;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        for form in [format!("key={BETA_KEY}"), format!("key={BETA_KEY}&remember=0"), format!("key={BETA_KEY}&remember=yes")] {
+            let (s, h, _) = beta_req(&app, "POST", "/login", Some(BETA_ORIGIN), None, Some(&form), true).await;
+            assert_eq!(s, StatusCode::SEE_OTHER, "{form}");
+            let set = h[header::SET_COOKIE].to_str().unwrap();
+            assert!(!set.contains("Max-Age"), "session-only cookie expected: {set}");
+            for attr in ["__Host-orion_session=", "Path=/", "HttpOnly", "Secure", "SameSite=Lax"] {
+                assert!(set.contains(attr), "cookie missing {attr}: {set}");
+            }
+            let exp = token_expiry(set);
+            assert!(exp > now && exp <= now + 12 * 3600 + 5, "token must expire within 12 h: {exp} vs {now}");
+        }
+        let (_, h, _) = beta_req(&app, "POST", "/login", Some(BETA_ORIGIN), None, Some(&format!("key={BETA_KEY}&remember=1")), true).await;
+        let exp = token_expiry(h[header::SET_COOKIE].to_str().unwrap());
+        assert!(exp > now + 7 * 24 * 3600 - 5, "remembered sign-in lasts LTF_SESSION_HOURS");
+        // A short LTF_SESSION_HOURS also caps the browser-session token.
+        let short = test_app_with(|c| { beta(c); c.session_hours = 2; }).await;
+        let (_, h, _) = beta_req(&short, "POST", "/login", Some(BETA_ORIGIN), None, Some(&format!("key={BETA_KEY}")), true).await;
+        assert!(token_expiry(h[header::SET_COOKIE].to_str().unwrap()) <= now + 2 * 3600 + 5);
+        // The sign-in page offers the choice, unticked by default.
+        let (_, _, page) = beta_req(&app, "GET", "/", None, None, None, true).await;
+        assert!(page.contains(r#"name="remember" value="1">"#) && !page.contains("checked"));
+    }
+
+    #[tokio::test]
+    async fn sign_out_can_erase_this_browsers_data() {
+        let app = test_app_with(beta).await;
+        let cookie = sign_in(&app).await;
+        let (s, h, _) = beta_req(&app, "POST", "/logout", Some(BETA_ORIGIN), Some(&cookie), None, false).await;
+        assert_eq!(s, StatusCode::NO_CONTENT);
+        assert!(h.get("clear-site-data").is_none(), "plain sign-out keeps local data");
+        let cookie = sign_in(&app).await;
+        let (s, h, _) = beta_req(&app, "POST", "/logout?erase=1", Some(BETA_ORIGIN), Some(&cookie), None, false).await;
+        assert_eq!(s, StatusCode::NO_CONTENT);
+        assert_eq!(h["clear-site-data"], r#""cache", "storage""#);
+        assert!(h[header::SET_COOKIE].to_str().unwrap().contains("Max-Age=0"));
+        assert_eq!(beta_req(&app, "GET", "/api/ping", None, Some(&cookie), None, false).await.0, StatusCode::UNAUTHORIZED);
+        // Still same-origin only.
+        let (s, h, _) = beta_req(&app, "POST", "/logout?erase=1", Some("https://evil.example"), None, None, false).await;
+        assert_eq!(s, StatusCode::FORBIDDEN);
+        assert!(h.get("clear-site-data").is_none());
+    }
+
+    #[test]
+    fn mode_names() {
+        assert_eq!(config::parse_mode(None), Ok(config::Mode::Development));
+        assert_eq!(config::parse_mode(Some("development")), Ok(config::Mode::Development));
+        assert_eq!(config::parse_mode(Some("production")), Ok(config::Mode::Production));
+        assert_eq!(config::parse_mode(Some("beta")), Ok(config::Mode::Production), "old name still works");
+        assert!(config::parse_mode(Some("prod")).is_err());
+        assert!(config::parse_mode(Some("public")).is_err());
     }
 }

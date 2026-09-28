@@ -146,9 +146,15 @@ export default {
           row('shield', 'Web layer (isolated mode & /net/ fetching)', feat.proxy_allowlist?.length ? `Allowed hosts: ${feat.proxy_allowlist.join(', ')}` : 'Any public host (LTF_PROXY, LTF_PROXY_ALLOW). Sites that forbid embedding are never shown in windows.', yes(feat.proxy)),
           row('search', 'YouTube search', 'Requires YOUTUBE_API_KEY on the server.', yes(feat.youtube_search)),
           ...(session?.access_control ? [
-            h('div.section-title', 'Private beta'),
+            h('div.section-title', 'Access'),
             row('lock', 'Sign out', 'End this browser’s session. Local preferences and app data stay in this browser.',
               h('button.btn', { onclick: async () => { await fetch('/logout', { method: 'POST' }).catch(() => {}); location.assign('/'); } }, 'Sign out')),
+            row('lock', 'Sign out and erase this browser', 'For shared or school computers: also deletes Orion OS data stored in this browser (drafts, bookmarks, history, app data, caches). Server files are kept.',
+              h('button.btn.danger', { onclick: async () => {
+                if (!confirm('Sign out and delete all Orion OS data stored in this browser?')) return;
+                await fetch('/logout?erase=1', { method: 'POST' }).catch(() => {});
+                location.assign('/');
+              } }, 'Erase & sign out')),
           ] : []),
           h('div.section-title', 'Startup'),
           toggleRow('bolt', 'Fast startup', 'Skip the boot console animation.', store.get('boot.skipAnimation'), (v) => store.set('boot.skipAnimation', v)),

@@ -10,7 +10,7 @@
 //! is the desktop shell (static/js/core/api.js), a browser page on this same
 //! origin, which always sends `Origin`.
 //!
-//! With the private-beta access gate on (src/auth.rs), the upgrade also needs
+//! With the access gate on (src/auth.rs), the upgrade also needs
 //! a signed-in session, and the stream closes once that session expires or is
 //! signed out — an open socket never outlives its sign-in.
 

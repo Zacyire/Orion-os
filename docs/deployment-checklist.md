@@ -1,6 +1,6 @@
-# Orion OS private beta — real-device checklist
+# Orion OS — real-device checklist
 
-Run this from a browser that is **not** your development browser. Ideally that's another device, such as a phone, tablet or second computer, on another network. Use `https://YOUR_DOMAIN`.
+Run this from a browser that is **not** your development browser. Ideally that's another device, such as a phone, tablet or second computer, on another network. Use `https://orion.YOUR_DOMAIN`.
 
 Mark each item ✅ or ❌ and note the browser and device.
 
@@ -8,14 +8,17 @@ Mark each item ✅ or ❌ and note the browser and device.
 
 ## Access
 
-- [ ] `http://YOUR_DOMAIN` redirects to `https://`, and the certificate is valid with no warnings.
+- [ ] `http://orion.YOUR_DOMAIN` redirects to `https://`, and the certificate is valid with no warnings.
 - [ ] A fresh browser gets the **Sign in · Orion OS** page, not the desktop.
 - [ ] A wrong key shows "That access key isn't right", and the page stays signed out.
 - [ ] The right key opens the desktop.
 - [ ] Reloading keeps you signed in.
+- [ ] Without **Keep me signed in**, closing the whole browser and reopening it asks for the key again. DevTools shows the cookie as a "Session" cookie.
+- [ ] With **Keep me signed in** ticked (own devices only), the cookie expires in about 7 days.
 - [ ] A private/incognito window on the same device must sign in again.
 - [ ] Settings → System → **Sign out** returns to the sign-in page.
 - [ ] Signing in again shows your local data (Notepad draft, bookmarks) still there.
+- [ ] Settings → System → **Erase & sign out** returns to the sign-in page. After signing in again, that browser's local data (draft, bookmarks) is gone, but your Notepad drive files on the server are still there.
 - [ ] DevTools → Application → Cookies shows only `__Host-orion_session`, marked HttpOnly, Secure and SameSite=Lax.
 - [ ] The key does not appear in the address bar or in history.
 
@@ -29,7 +32,7 @@ Mark each item ✅ or ❌ and note the browser and device.
 
 ## WebSocket
 
-- [ ] DevTools → Network → WS shows `wss://YOUR_DOMAIN/ws` with status **101**.
+- [ ] DevTools → Network → WS shows `wss://orion.YOUR_DOMAIN/ws` with status **101**.
 - [ ] The first frame received is `{"type":"hello",…}`.
 - [ ] In the console, `new WebSocket('wss://'+location.host+'/ws')` → the `hello` frame arrives; sending `{"type":"ping"}` gets `{"type":"pong"}` back.
 - [ ] Installing or uninstalling an app on this device updates the Start menu and App Store on a second signed-in device (a live `app-installed`/`app-uninstalled` event). Settings changes reach other devices after a reload.
@@ -53,9 +56,16 @@ Sites keep their own rules. A site that refuses embedding shows **Open in browse
 - [ ] **App Store:** it opens and lists apps; install and uninstall work.
 - [ ] Nothing asks for or bypasses a third-party login, paywall, DRM or bot check.
 
+## Shared / school computer
+
+- [ ] Signed in without "Keep me signed in", and the browser did not save the key.
+- [ ] Finished with **Erase & sign out**.
+- [ ] Orion browser "isolated" mode says it's unavailable, and thumbnails show placeholders. That's expected with `LTF_PROXY=0`: Orion OS doesn't fetch other websites for you.
+- [ ] If the network blocks the site, stop there. That's the network owner's decision.
+
 ## Negative checks (from any machine)
 
-- [ ] `curl -s -o /dev/null -w '%{http_code}' https://YOUR_DOMAIN/api/ping` → `401`
-- [ ] `curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example' https://YOUR_DOMAIN/` → not `200` from Orion OS (421 or 403)
-- [ ] `curl -s https://YOUR_DOMAIN/healthz` → `ok` and nothing else
+- [ ] `curl -s -o /dev/null -w '%{http_code}' https://orion.YOUR_DOMAIN/api/ping` → `401`
+- [ ] `curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example' https://orion.YOUR_DOMAIN/` → not `200` from Orion OS (421 or 403)
+- [ ] `curl -s https://orion.YOUR_DOMAIN/healthz` → `ok` and nothing else
 - [ ] Port 8080 on `YOUR_SERVER` is closed from outside (`nc -vz YOUR_SERVER 8080` fails).

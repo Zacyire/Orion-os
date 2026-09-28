@@ -1,11 +1,13 @@
-# Orion OS private beta — Caddy reverse proxy.
+# Orion OS — Caddy reverse proxy (recommended).
 #
-# Caddy obtains and renews the HTTPS certificate automatically, redirects
-# HTTP to HTTPS, and proxies WebSocket upgrades and the Host/Origin headers
-# unchanged by default. Replace YOUR_DOMAIN. Orion OS listens on
-# 127.0.0.1:8080 (LTF_MODE=beta). See docs/private-beta-deployment.md.
+# Install as /etc/caddy/Caddyfile and replace orion.YOUR_DOMAIN. Caddy gets
+# and renews the HTTPS certificate automatically (the DNS record must already
+# point at this server and ports 80/443 must be open), redirects HTTP to
+# HTTPS, and passes WebSocket upgrades and the Host/Origin headers through
+# unchanged. Orion OS listens on 127.0.0.1:8080 (LTF_MODE=production).
+# See docs/deployment.md.
 
-YOUR_DOMAIN {
+orion.YOUR_DOMAIN {
 	encode zstd gzip
 	header Strict-Transport-Security "max-age=31536000"
 	header -Server

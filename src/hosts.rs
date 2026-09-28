@@ -94,7 +94,7 @@ fn is_hostname(h: &str) -> bool {
 pub struct HostPolicy {
     /// Operator-approved exact hostnames (lowercase).
     extra: Vec<String>,
-    /// Beta mode: the browser always reaches Orion OS over HTTPS, so a
+    /// Production mode: the browser always reaches Orion OS over HTTPS, so a
     /// same-origin check only accepts `https://` origins.
     https_only: bool,
 }
@@ -118,7 +118,7 @@ impl HostPolicy {
         HostPolicy { extra, https_only: false }
     }
 
-    /// Only accept `https://` origins in same-origin checks (beta mode).
+    /// Only accept `https://` origins in same-origin checks (production mode).
     pub fn https_origins_only(mut self) -> Self {
         self.https_only = true;
         self

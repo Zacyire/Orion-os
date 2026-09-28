@@ -3,3 +3,9 @@
 !/data/.gitkeep
 /tools/wallpaper/node_modules
 /tools/wallpaper/*.webm
+
+# Never commit deployment secrets (the examples in deploy/ contain placeholders only)
+*.env
+access-key
+*.pem
+*.key
