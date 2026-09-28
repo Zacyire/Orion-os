@@ -1,8 +1,10 @@
-# LTF OS
+# Orion OS
 
-LTF OS is a web platform for games and media that looks and works like a desktop operating system. The backend is Rust (Axum) and serves the API, content catalogues, a content proxy and a WebSocket event bus. The frontend is plain ES modules with no framework and no build step.
+Orion OS is a web platform for games and media that looks and works like a desktop operating system. The backend is Rust (Axum) and serves the API, content catalogues, a content proxy and a WebSocket event bus. The frontend is plain ES modules with no framework and no build step.
 
 Websites become applications: a registry entry turns any site into an app window without browser chrome, while Orion remains the one general-purpose browser. Both share the same web container and a self-hosted, security-hardened web layer in the Rust server.
+
+**Naming.** The product is Orion OS (formerly LTF OS). The Orion *browser* is a separate app that runs inside it. Compatibility identifiers keep the `ltf` prefix so that existing apps, stored data and deployments keep working: the `window.ltf` API and `/ltf-api.js`, `ltf:` localStorage keys, the `X-LTF-Client` header, `x-ltf-*` response headers, `LTF_*` environment variables, service-worker cache names, and the `ltf-os` crate/binary name.
 
 ## Quick start
 
@@ -103,14 +105,14 @@ All catalogues live in `content/`. They are plain JSON, served by `GET /api/cont
 
 ## Web layer (proxy and fetching)
 
-The web layer is self-hosted inside the Rust server (`src/web/`, built on `reqwest`), so no third-party proxy API is involved. I evaluated the common free, self-hosted web proxies, Ultraviolet and Scramjet. Both are Node services built for filter evasion: they rewrite page JavaScript and strip sites' security headers by design. That conflicts with this project's rules, so LTF OS uses its own narrower layer.
+The web layer is self-hosted inside the Rust server (`src/web/`, built on `reqwest`), so no third-party proxy API is involved. I evaluated the common free, self-hosted web proxies, Ultraviolet and Scramjet. Both are Node services built for filter evasion: they rewrite page JavaScript and strip sites' security headers by design. That conflicts with this project's rules, so Orion OS uses its own narrower layer.
 
 ```text
 App window (web-app / Orion tab)
    │ 1  GET /api/web/inspect?url=…      preflight: validate, SSRF-check, follow redirects,
    │                                     read framing policy (cached 5 min)
    │ 2a <iframe src="https://site/…">   direct: the site's own origin, cookies, CSP and DRM;
-   │                                     LTF OS never sees this traffic
+   │                                     Orion OS never sees this traffic
    │ 2b <iframe src="/proxy/page?url=…"> isolated: opaque-origin sandbox, no cookies,
    │                                     navigation reported back via postMessage
    │ 3  /net/<encoded-url>              resources and data (favicons, thumbnails, feeds, APIs)
@@ -138,7 +140,7 @@ Error codes are shared by the backend and the native error screens: `INVALID_URL
 
 - **Respected, never bypassed:** `X-Frame-Options` and CSP `frame-ancestors`. A page that forbids embedding is never shown in a window, in either direct or isolated mode; `/proxy/page` itself refuses it too. The window shows `EMBEDDING_NOT_ALLOWED` with **Open in browser tab**.
 - **Never forwarded:** cookies, `Authorization`, or any credential, in either direction. Logins, paywalls, access controls, DRM and bot checks stay exactly as the site set them.
-- **Isolated mode** re-hosts a page, so the site's CSP (whose `'self'` would now mean LTF OS) is replaced by a *stricter* sandbox with an opaque origin and no storage or cookies. Subresources load directly from the origin and are not proxied.
+- **Isolated mode** re-hosts a page, so the site's CSP (whose `'self'` would now mean Orion OS) is replaced by a *stricter* sandbox with an opaque origin and no storage or cookies. Subresources load directly from the origin and are not proxied.
 
 ### Security controls
 
@@ -148,7 +150,7 @@ Error codes are shared by the backend and the native error screens: `INVALID_URL
 | DNS rebinding | Each connection is pinned to the address that was validated. The environment proxy is off by default, since it would re-resolve DNS. |
 | Redirect tricks | Redirects are never followed automatically. Every hop (at most 5) goes through the full guard again. |
 | Resource abuse | Token-bucket rate limit per client, 5 s DNS / 8 s connect / 20 s total timeouts, and size caps of 6 MB for HTML and 32 MB for resources. `CORP: same-origin` stops other sites from hotlinking `/net/`. |
-| Proxied content attacking LTF OS | `/proxy/page` uses a CSP `sandbox` without `allow-same-origin`, so proxied pages get an opaque origin. `/net/` responses are served with `sandbox` (no scripts) and `nosniff`. |
+| Proxied content attacking Orion OS | `/proxy/page` uses a CSP `sandbox` without `allow-same-origin`, so proxied pages get an opaque origin. `/net/` responses are served with `sandbox` (no scripts) and `nosniff`. |
 | Direct iframes | Sandboxed without `allow-top-navigation`, so an embedded site can't navigate the OS away. |
 | CSRF against the API | State-changing calls need an `X-LTF-Client` header, which forces a CORS preflight that no other origin can pass. |
 | Auditing | Structured logs under `ltf_os::web`: mode, host, status, latency and every block reason. |

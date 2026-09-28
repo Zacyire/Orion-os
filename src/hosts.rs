@@ -13,7 +13,7 @@
 //!   literal can't be produced by DNS rebinding: the page's own URL would have
 //!   to be that IP, i.e. the page is served by this server.
 //! * exact hostnames listed by the operator in `LTF_ALLOWED_HOSTS`
-//!   (comma-separated, e.g. `ltf.home.lan,mypc`) for LAN names or a reverse
+//!   (comma-separated, e.g. `orion.home.lan,mypc`) for LAN names or a reverse
 //!   proxy. Exact match only — no wildcards, no suffix matching.
 //!
 //! Rejected: every other hostname (including `*.localhost` subdomains and
@@ -166,7 +166,7 @@ mod tests {
     use super::*;
 
     fn policy() -> HostPolicy {
-        HostPolicy::new(&["ltf.home.lan".into(), "*.bad".into(), "has:8080".into(), "10.0.0.1".into()])
+        HostPolicy::new(&["orion.home.lan".into(), "*.bad".into(), "has:8080".into(), "10.0.0.1".into()])
     }
 
     #[test]
@@ -174,7 +174,7 @@ mod tests {
         let p = policy();
         for h in [
             "localhost", "LOCALHOST", "localhost:8080", "127.0.0.1", "127.0.0.1:8080", "192.168.1.20:8080",
-            "[::1]", "[::1]:8080", "ltf.home.lan", "LTF.Home.Lan:443",
+            "[::1]", "[::1]:8080", "orion.home.lan", "Orion.Home.Lan:443",
         ] {
             assert!(p.allows_host_header(h), "should accept {h}");
         }
@@ -185,7 +185,7 @@ mod tests {
         let p = policy();
         for h in [
             "evil.example", "evil.example:8080", "localhost.evil.example", "127.0.0.1.nip.io", "evil.localhost",
-            "blocks.pkg.localhost:8080", "localhost.", "ltf.home.lan.evil.example", "home.lan", "x.ltf.home.lan",
+            "blocks.pkg.localhost:8080", "localhost.", "orion.home.lan.evil.example", "home.lan", "x.orion.home.lan",
             "anything.bad", "has",
         ] {
             assert!(!p.allows_host_header(h), "should reject {h}");
@@ -217,7 +217,7 @@ mod tests {
         assert!(origin_matches_host("http://127.0.0.1:8080", "127.0.0.1:8080"));
         assert!(origin_matches_host("http://localhost:8080", "LOCALHOST:8080"));
         assert!(origin_matches_host("http://localhost", "localhost:80"));
-        assert!(origin_matches_host("https://ltf.home.lan", "ltf.home.lan"));
+        assert!(origin_matches_host("https://orion.home.lan", "orion.home.lan"));
         assert!(origin_matches_host("http://[::1]:8080", "[::1]:8080"));
         for (o, h) in [
             ("null", "localhost:8080"),

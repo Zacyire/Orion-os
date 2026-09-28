@@ -1,8 +1,8 @@
-//! # LTF OS web layer
+//! # Orion OS web layer
 //!
 //! Everything that touches remote websites goes through this module. It is
 //! a small, self-hosted replacement for a third-party proxy API, built on
-//! `reqwest` and running inside the LTF OS server.
+//! `reqwest` and running inside the Orion OS server.
 //!
 //! ```text
 //!  App window (web-app / Orion)

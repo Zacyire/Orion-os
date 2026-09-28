@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LTF API Playground</title>
+  <title>Orion OS API Playground</title>
   <!-- Permanent internal developer tool for the window.ltf app API.
-       First-party page: served from the LTF OS origin and shown in an app
+       First-party page: served from the Orion OS origin and shown in an app
        window, which is the only context where window.ltf is exposed. -->
   <script src="/ltf-api.js"></script>
   <style>
@@ -44,7 +44,7 @@
   </style>
 </head>
 <body>
-  <h1>LTF API Playground</h1>
+  <h1>Orion OS API Playground</h1>
   <p class="sub">Internal developer tool — not an installed application.</p>
 
   <section>
@@ -197,7 +197,7 @@
         catch (e) { log('ltf.open error: ' + e.message); }
       };
       $('notify').onclick = function () {
-        window.ltf.notify('LTF API Playground', 'Notification sent at ' + new Date().toLocaleTimeString());
+        window.ltf.notify('Orion OS API Playground', 'Notification sent at ' + new Date().toLocaleTimeString());
         log('called ltf.notify(…)');
       };
 

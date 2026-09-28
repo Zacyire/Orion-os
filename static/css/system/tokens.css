@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LTF OS — Design tokens
+   Orion OS — Design tokens
    Every visual value in the OS resolves to one of these custom properties.
    Change them here (or at runtime via Settings, which writes --accent-color
    and --system-glass-opacity on :root) to re-theme the entire system.

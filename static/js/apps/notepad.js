@@ -55,7 +55,7 @@ export default {
       status.pos.textContent = `Ln ${ln}, Col ${col}`;
       status.count.textContent = `${ta.value.length} chars · ${words} words`;
       status.kind.textContent = kind();
-      status.state.textContent = file ? (isDirty() ? 'Unsaved changes' : 'Saved to LTF drive') : 'Draft';
+      status.state.textContent = file ? (isDirty() ? 'Unsaved changes' : 'Saved to Orion OS drive') : 'Draft';
       updateTitle();
     }
 
@@ -145,7 +145,7 @@ export default {
     let popup;
     async function showFiles(anchor) {
       if (popup) { popup.remove(); popup = null; return; }
-      popup = h('div.np-files.glass', h('div.muted', { style: { padding: '6px 10px', fontSize: 'var(--fs-xs)' } }, 'LTF drive'));
+      popup = h('div.np-files.glass', h('div.muted', { style: { padding: '6px 10px', fontSize: 'var(--fs-xs)' } }, 'Orion OS drive'));
       root.querySelector('.app').append(popup);
       popup.style.left = `${anchor.offsetLeft}px`;
       try {

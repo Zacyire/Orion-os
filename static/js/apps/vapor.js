@@ -97,7 +97,7 @@ export default {
               h('dt', 'Developer'), h('dd', g.developer || '—'),
               h('dt', 'Released'), h('dd', g.released || '—'),
               h('dt', 'Genres'), h('dd', (g.genres || []).join(', ') || '—'),
-              h('dt', 'Runs in'), h('dd', g.launch?.type === 'external' ? 'Browser tab' : 'LTF OS window'),
+              h('dt', 'Runs in'), h('dd', g.launch?.type === 'external' ? 'Browser tab' : 'Orion OS window'),
               s ? [h('dt', 'Play time'), h('dd', fmtPlaytime(s.playtime || 0))] : null,
             ),
             buttons(g),

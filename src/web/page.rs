@@ -3,7 +3,7 @@
 //!
 //! The server fetches the page and returns it with:
 //! * `Content-Security-Policy: sandbox …` **without** `allow-same-origin` —
-//!   the page runs in an opaque origin, so it can't read LTF OS storage,
+//!   the page runs in an opaque origin, so it can't read Orion OS storage,
 //!   cookies or API responses, and no site cookies exist to leak;
 //! * an injected `<base href>` so subresources load straight from the origin
 //!   (they are not proxied — cheaper and faithful);
@@ -13,7 +13,7 @@
 //! Framing policy is enforced *here too*: a page that forbids embedding is
 //! answered with an EMBEDDING_NOT_ALLOWED screen, never rendered. Because
 //! the document is re-hosted, the site's own CSP (whose `'self'` would now
-//! mean the LTF OS origin) is replaced by the stricter sandbox above.
+//! mean the Orion OS origin) is replaced by the stricter sandbox above.
 
 use std::time::Instant;
 
@@ -183,7 +183,7 @@ fn neutralise_meta_policies(html: &str) -> String {
 /// forms back through the proxy and reports navigation to the Orion window.
 const SHIM: &str = r#"(function(){
 var PAGE=__LTF_URL__;
-// location reflects the /proxy URL (unaffected by <base>), so this is the LTF server.
+// location reflects the /proxy URL (unaffected by <base>), so this is the Orion OS server.
 var SELF=location.protocol+'//'+location.host;
 function prox(u){return SELF+'/proxy/page?url='+encodeURIComponent(u)}
 function abs(h){try{return new URL(h,document.baseURI).href}catch(e){return null}}

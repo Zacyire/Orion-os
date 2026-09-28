@@ -4,8 +4,8 @@
 import { $, escapeHtml, local } from './dom.js';
 
 const PRELUDE = [
-  ['arch', 'LTF OS Boot Manager'],
-  ['dim', '  Loading LTF OS (linux)'],
+  ['arch', 'Orion OS Boot Manager'],
+  ['dim', '  Loading Orion OS (linux)'],
   ['', ':: Loading Linux linux ...'],
   ['', ':: Loading initial ramdisk ...'],
   ['', '[    0.000000] Linux version 6.10.10-arch1-1 (linux@archlinux) (gcc (GCC) 14.2.1, GNU ld 2.43) #1 SMP PREEMPT_DYNAMIC'],
@@ -23,7 +23,7 @@ const PRELUDE = [
   ['', '/dev/nvme0n1p2: clean, 482311/30531584 files, 9187723/122096646 blocks'],
   ['', ':: mounting \'/dev/nvme0n1p2\' on real root'],
   ['', ''],
-  ['', 'Welcome to <b class="arch">LTF OS</b>!'],
+  ['', 'Welcome to <b class="arch">Orion OS</b>!'],
   ['', ''],
 ];
 
@@ -31,7 +31,7 @@ const FALLBACK_UNITS = [
   ['ok', 'Reached target Local File Systems.'],
   ['ok', 'Reached target System Initialization.'],
   ['ok', 'Reached target Basic System.'],
-  ['fail', 'Failed to start LTF API Server (connection refused).'],
+  ['fail', 'Failed to start Orion OS API Server (connection refused).'],
   ['warn', 'Continuing in offline mode; preferences are stored locally.'],
   ['ok', 'Loaded Application Registry.'],
   ['ok', 'Started Display Compositor.'],
@@ -106,7 +106,7 @@ export async function runBoot(work) {
 
   // Phase 3 — wait for real work (prefs, registry, desktop)
   if (!workDone) {
-    push('', `         Starting LTF Desktop Session...`);
+    push('', `         Starting Orion OS Desktop Session...`);
     let p = 90;
     while (!workDone) {
       progress((p = Math.min(99, p + 1)), 'starting desktop session');
@@ -115,12 +115,12 @@ export async function runBoot(work) {
   }
   await workP.catch((err) => {
     console.error(err);
-    push('', `${tag('fail')} Failed to start LTF Desktop Session: ${escapeHtml(err.message)}`, true);
+    push('', `${tag('fail')} Failed to start Orion OS Desktop Session: ${escapeHtml(err.message)}`, true);
   });
 
   const user = escapeHtml(local.get('prefs')?.user?.name || 'user');
   push('', '');
-  push('', 'LTF OS (tty1)');
+  push('', 'Orion OS (tty1)');
   push('', '');
   push('', `ltf login: <b>${user.toLowerCase().replace(/\s+/g, '')}</b> (automatic login)`, true);
   progress(100, 'starting session');

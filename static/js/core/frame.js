@@ -16,7 +16,7 @@
 //     │     └─ ok
 //     │
 //     ├─ mode "direct"   → <iframe src="https://site/…">   real origin: the site's own
-//     │                     cookies, CSP and DRM apply; LTF OS never sees the traffic
+//     │                     cookies, CSP and DRM apply; Orion OS never sees the traffic
 //     └─ mode "isolated" → <iframe src="/proxy/page?url=…"> opaque-origin sandbox;
 //                           navigation/title reported back via postMessage
 //
@@ -40,11 +40,11 @@ export const ERRORS = {
   EMBEDDING_NOT_ALLOWED: { icon: 'shield', title: 'Unable to load content', text: 'The destination does not allow this type of embedded access.' },
   SITE_UNAVAILABLE: { icon: 'wifiOff', title: 'Site unavailable', text: 'The destination couldn’t be reached. It may be offline, or refusing connections from this server.' },
   NETWORK_TIMEOUT: { icon: 'clock', title: 'The site took too long to respond', text: 'The connection timed out. Check your connection or try again.' },
-  INVALID_URL: { icon: 'info', title: 'Invalid address', text: 'That doesn’t look like a web address LTF OS can open.' },
-  BLOCKED_REQUEST: { icon: 'lock', title: 'This address is blocked', text: 'LTF OS doesn’t open private-network, internal or non-web addresses.' },
+  INVALID_URL: { icon: 'info', title: 'Invalid address', text: 'That doesn’t look like a web address Orion OS can open.' },
+  BLOCKED_REQUEST: { icon: 'lock', title: 'This address is blocked', text: 'Orion OS doesn’t open private-network, internal or non-web addresses.' },
   PROXY_ERROR: { icon: 'info', title: 'Unable to load content', text: 'The content service couldn’t complete the request.' },
   PROXY_DISABLED: { icon: 'shield', title: 'Content service disabled', text: 'Isolated mode and remote fetching are turned off on this server.' },
-  SERVER_ERROR: { icon: 'info', title: 'LTF OS server unavailable', text: 'The LTF OS server didn’t respond. It may be restarting.' },
+  SERVER_ERROR: { icon: 'info', title: 'Orion OS server unavailable', text: 'The Orion OS server didn’t respond. It may be restarting.' },
   UNSUPPORTED_CONTENT: { icon: 'file', title: 'Unsupported content', text: 'This content can’t be displayed in an app window.' },
   RATE_LIMITED: { icon: 'clock', title: 'Too many requests', text: 'Please wait a moment and try again.' },
   TOO_LARGE: { icon: 'file', title: 'Content too large', text: 'This content exceeds the size limit for app windows.' },
@@ -91,7 +91,7 @@ export function createFrame(opts = {}) {
     iframe = null;
   }
 
-  /** Render a native LTF OS error screen for `code`. */
+  /** Render a native Orion OS error screen for `code`. */
   function showError(code, { url, detail } = {}) {
     clearFrame();
     loading.hidden = true;

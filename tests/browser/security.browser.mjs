@@ -2,7 +2,7 @@
 //
 //   cargo build && node tests/browser/security.browser.mjs
 //
-// Self-contained: a throwaway LTF OS server (free port, temp data dir; private
+// Self-contained: a throwaway Orion OS server (free port, temp data dir; private
 // targets allowed only for this instance so a local test site can be framed)
 // and a cross-origin local HTML site. Covers:
 //   A. /ws Origin enforcement     C. window.ltf caller authentication

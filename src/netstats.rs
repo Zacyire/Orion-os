@@ -1,10 +1,10 @@
 //! Read-only connectivity/latency for `GET /api/network/stats`.
 //!
-//! What `latency_ms` measures: the round-trip time for the **LTF server** to
+//! What `latency_ms` measures: the round-trip time for the **Orion OS server** to
 //! make one lightweight HTTP GET to a single, **server-configured** destination
 //! (`LTF_NETCHECK_URL`, default [`DEFAULT_NETCHECK_URL`]). It is the *server's*
-//! network path, not the user's browser "ping". If LTF runs on the user's
-//! machine the two are similar; if LTF is hosted remotely they are not. The
+//! network path, not the user's browser "ping". If Orion OS runs on the user's
+//! machine the two are similar; if Orion OS is hosted remotely they are not. The
 //! widget labels it accordingly.
 //!
 //! Safety: the destination is fixed by server configuration and can NEVER be
@@ -74,7 +74,7 @@ impl NetSampler {
         // Dedicated client: go direct (no env proxy) so the measurement is of
         // this server's own path, and never carries credentials or cookies.
         let client = reqwest::Client::builder()
-            .user_agent(concat!("LTF-OS/", env!("CARGO_PKG_VERSION"), " connectivity-check"))
+            .user_agent(concat!("Orion-OS/", env!("CARGO_PKG_VERSION"), " connectivity-check"))
             .timeout(PROBE_TIMEOUT)
             .connect_timeout(PROBE_TIMEOUT)
             .redirect(reqwest::redirect::Policy::none())

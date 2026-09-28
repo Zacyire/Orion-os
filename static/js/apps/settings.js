@@ -80,7 +80,7 @@ export default {
           h('p.muted.set-note', 'Add wallpapers by placing .mp4/.webm loops in static/media/wallpapers/ or listing them in content/wallpapers.json.'),
           toggleRow('sparkles', 'Play wallpaper animation', 'Pause to save power; the current frame stays on screen.', th.animateWallpaper, (v) => store.set('theme.animateWallpaper', v)),
           h('div.section-title', 'Colors'),
-          selectRow('moon', 'Mode', 'Choose how LTF OS looks.', [['dark', 'Dark'], ['light', 'Light']], th.mode, (v) => store.set('theme.mode', v)),
+          selectRow('moon', 'Mode', 'Choose how Orion OS looks.', [['dark', 'Dark'], ['light', 'Light']], th.mode, (v) => store.set('theme.mode', v)),
           row('palette', 'Accent color', 'Highlights, focus rings and selection.',
             h('div.swatches', ...ACCENTS.map((c) => {
               const s = h(`button.swatch${c === th.accent ? '.active' : ''}`, { style: { background: c }, title: c, 'aria-label': `Accent ${c}` });
@@ -140,7 +140,7 @@ export default {
           info ? h('div.card', h('dl.info-grid', ...Object.entries({
             'Version': `${info.name} ${info.version}`, 'Server': info.server,
             'Platform': `${info.platform} (${info.arch})`, 'Uptime': `${Math.floor(info.uptime_secs / 60)} min`,
-          }).flatMap(([k, v]) => [h('dt', k), h('dd', v)]))) : h('div.card.muted', 'The LTF API server is unreachable. Preferences are stored in this browser until it returns.'),
+          }).flatMap(([k, v]) => [h('dt', k), h('dd', v)]))) : h('div.card.muted', 'The Orion OS API server is unreachable. Preferences are stored in this browser until it returns.'),
           h('div.section-title', 'Server features'),
           row('shield', 'Web layer (isolated mode & /net/ fetching)', feat.proxy_allowlist?.length ? `Allowed hosts: ${feat.proxy_allowlist.join(', ')}` : 'Any public host (LTF_PROXY, LTF_PROXY_ALLOW). Sites that forbid embedding are never shown in windows.', yes(feat.proxy)),
           row('search', 'YouTube search', 'Requires YOUTUBE_API_KEY on the server.', yes(feat.youtube_search)),
@@ -156,7 +156,7 @@ export default {
         return [
           h('h1.page-title', 'About'),
           h('div.card.account-card', h('img', { src: 'assets/logo.svg', alt: '', style: { width: '64px', height: '64px' } }),
-            h('div', h('h2', 'LTF OS'), h('p.muted', 'A desktop environment for games and media, served by a Rust API layer. Apps are isolated containers that embed real services and content.'))),
+            h('div', h('h2', 'Orion OS'), h('p.muted', 'A desktop environment for games and media, served by a Rust API layer. Apps are isolated containers that embed real services and content.'))),
           h('div.section-title', 'Keyboard shortcuts'),
           h('dl.info-grid', ...[
             ['Ctrl + Space', 'Start'], ['Alt + W', 'Close window'], ['Alt + M', 'Minimize window'], ['Alt + ↑', 'Maximize / restore'],

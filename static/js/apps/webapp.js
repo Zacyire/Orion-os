@@ -1,4 +1,4 @@
-// Web-app container — turns a website into an LTF OS application.
+// Web-app container — turns a website into an Orion OS application.
 //
 // Every registry entry with "type": "web-app" is rendered by this module;
 // nothing app-specific lives here. Registry fields (static/apps.json):
@@ -115,7 +115,7 @@ function mountUnavailable({ root }, id) {
   root.append(h('div.app.webapp', h('div.frame-notice.frame-error', { dataset: { code: 'RUNTIME_UNAVAILABLE' } },
     h('div.frame-error-icon', { html: icons.shield }),
     h('h2', 'App runtime unavailable'),
-    h('p', 'This app uses a runtime that isn’t available in this version of LTF OS, so it wasn’t loaded.'),
+    h('p', 'This app uses a runtime that isn’t available in this version of Orion OS, so it wasn’t loaded.'),
     h('code', id),
   )));
 }

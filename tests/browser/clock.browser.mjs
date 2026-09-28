@@ -2,7 +2,7 @@
 //
 //   cargo build && node tests/browser/clock.browser.mjs
 //
-// Self-contained and offline: a throwaway LTF OS server plus Playwright's Clock
+// Self-contained and offline: a throwaway Orion OS server plus Playwright's Clock
 // API (installed with a fixed time before load) so time behaviour — live ticks,
 // single-timer cadence, midnight roll-over, teardown — is deterministic without
 // waiting real seconds. Playwright is resolved locally or from `npm root -g`

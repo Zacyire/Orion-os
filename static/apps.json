@@ -6,7 +6,7 @@
     "icon": "orion",
     "category": "Internet",
     "description": "General-purpose web browser with tabs, history and bookmarks.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "default_size": [
       1180,
       740
@@ -24,7 +24,7 @@
     "icon": "netflix",
     "category": "Entertainment",
     "description": "Streaming, as a dedicated app window.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "default_size": [
       1200,
       740
@@ -46,7 +46,7 @@
     "icon": "youtube",
     "category": "Entertainment",
     "description": "YouTube as a dedicated app. youtube.com forbids embedding, so the app falls back to YouTube’s official embed player and Data API.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "default_size": [
       1180,
       720
@@ -69,7 +69,7 @@
     "icon": "geforcenow",
     "category": "Games",
     "description": "Cloud gaming portal with gamepad, fullscreen and keyboard access, plus connection diagnostics.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "default_size": [
       1280,
       760
@@ -95,7 +95,7 @@
     "icon": "spiceify",
     "category": "Entertainment",
     "description": "Music player for audio files and streaming-service embeds. Library defined in content/music.json.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "default_size": [
       1080,
       680
@@ -108,7 +108,7 @@
     "icon": "vapor",
     "category": "Games",
     "description": "Game store and library. Launches HTML5 and web-hosted games in their own windows. Catalogue in content/games.json.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "default_size": [
       1180,
       720
@@ -121,7 +121,7 @@
     "icon": "store",
     "category": "System",
     "description": "Install, remove and launch apps, or turn any website into an app.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "system": true,
     "default_size": [
       1040,
@@ -135,7 +135,7 @@
     "icon": "notepad",
     "category": "Productivity",
     "description": "Text and Markdown editor with server-side storage, upload and download.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "default_size": [
       860,
       580
@@ -148,7 +148,7 @@
     "icon": "settings",
     "category": "System",
     "description": "Personalization, wallpaper, taskbar position, accounts and system information.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "system": true,
     "default_size": [
       920,
@@ -157,12 +157,12 @@
   },
   {
     "id": "playground",
-    "name": "LTF API Playground",
+    "name": "Orion OS API Playground",
     "type": "web-app",
     "icon": "code",
     "category": "Developer",
     "description": "Internal developer tool for the window.ltf app API.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "hidden": true,
     "default_size": [
       620,
@@ -187,7 +187,7 @@
     "icon": "vapor",
     "category": "Games",
     "description": "Window host for games launched from Vapor.",
-    "developer": "LTF",
+    "developer": "Orion OS",
     "system": true,
     "hidden": true,
     "default_size": [

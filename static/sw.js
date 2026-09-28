@@ -1,4 +1,4 @@
-// LTF OS service worker.
+// Orion OS service worker.
 //
 // Scope: "/" (same origin only). What it does — and deliberately doesn't:
 //
@@ -89,7 +89,7 @@ async function net(req) {
       return res;
     } catch {
       if (hit) return hit;
-      return req.destination === 'image' ? placeholder() : errorJson('SERVER_ERROR', 'The LTF OS server is unreachable.');
+      return req.destination === 'image' ? placeholder() : errorJson('SERVER_ERROR', 'The Orion OS server is unreachable.');
     }
   })();
   inflight.set(req.url, pending);

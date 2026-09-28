@@ -1,7 +1,7 @@
 // Network Status — second first-party desktop widget.
 //
 // Shows connectivity and latency from GET /api/network/stats
-// (src/handlers/network.rs). IMPORTANT semantics: latency_ms is the LTF
+// (src/handlers/network.rs). IMPORTANT semantics: latency_ms is the Orion OS
 // SERVER's round-trip to a fixed server-configured endpoint — not the user's
 // browser ping — so the widget labels it "Network latency" and, in a subtitle,
 // "server → network". The backend is the source of truth.

@@ -1,6 +1,6 @@
-# LTF OS — Step 13: Runtime Architecture Review & Extension Plan
+# Orion OS — Step 13: Runtime Architecture Review & Extension Plan
 
-Research/analysis step. **No functional changes** were made to LTF OS to produce
+Research/analysis step. **No functional changes** were made to Orion OS to produce
 this document; it only reflects the code as it exists today and proposes a
 future sequence. It does **not** implement a proxy runtime, URL rewriting, or
 any new capability.
@@ -140,7 +140,7 @@ Everything else is presentation, identity, or capability.
 ## 4. Runtime boundaries — where a new runtime can be added
 
 A new runtime "conceptually like `runtime = "future-runtime"`" can be added
-**without** touching the window manager, permissions, storage, or the LTF API —
+**without** touching the window manager, permissions, storage, or the Orion OS API —
 because none of them branch on `runtime`. The only components that read `runtime`
 are `webapp.js` (axis 1) and `frame.js` (axis 2, via `proxy`).
 
@@ -178,8 +178,8 @@ Step 14.
 
 **What it does:**
 - `GET /proxy/page?url=` — server fetches the page and returns the HTML re-hosted
-  from the LTF origin inside an **opaque-origin sandbox** (`Content-Security-Policy:
-  sandbox …` **without** `allow-same-origin`). It cannot read LTF cookies,
+  from the Orion OS origin inside an **opaque-origin sandbox** (`Content-Security-Policy:
+  sandbox …` **without** `allow-same-origin`). It cannot read Orion OS cookies,
   storage, or API responses.
 - Injects `<base href>` so subresources load **directly from the real origin**
   (they are *not* proxied), plus a small shim that intercepts link clicks / GET
@@ -212,7 +212,7 @@ iframe `src` to `pageUrl(url)` = `/proxy/page?url=…` with `SANDBOX_ISOLATED`
 (no `allow-same-origin`). Navigation/title come back via the `ltf-proxy`
 postMessage channel handled inside `createFrame`.
 
-**Is it isolated from the LTF API?** Yes. The `/proxy/page` document runs in an
+**Is it isolated from the Orion OS API?** Yes. The `/proxy/page` document runs in an
 **opaque origin**, and `appbridge.js::senderApp` explicitly rejects any iframe
 whose `src` starts with `/proxy/` (and any non-same-origin frame). So
 `/proxy/page` content can never obtain `window.ltf` (metadata, storage,
@@ -251,7 +251,7 @@ a runtime and does not proxy site content.
 - **Navigations & other same-origin GETs** (JS/CSS/shell): network-first with a
   cache fallback for offline.
 
-**Handles LTF-owned resources only?** Effectively yes — same-origin shell assets
+**Handles Orion OS-owned resources only?** Effectively yes — same-origin shell assets
 plus the `/net/` OS-helper namespace (which is itself a guarded, credential-free
 server GET). It never sees a web-app's cross-origin traffic.
 
@@ -292,7 +292,7 @@ Notes:
   abstraction should **reuse it verbatim**, not introduce a parallel one.
 - `canHandle`/`mount` is the only genuinely new surface, and it can live entirely
   inside `webapp.js` as a `runtime → { mount }` table. The window manager,
-  permissions, storage, and LTF API stay untouched.
+  permissions, storage, and Orion OS API stay untouched.
 - Permissions remain **orthogonal** to runtime (Step-10 model). A runtime never
   grants capabilities; it only renders. `appbridge.js` isolation
   (same-origin + non-`/proxy/`) is what keeps privileged APIs away from
@@ -308,9 +308,9 @@ existing `createFrame` and the existing mount-instance contract.
 
 Architectural differences only (not a ranking).
 
-| Runtime | Current? | Purpose | Browser iframe | Backend involvement | LTF API? | Architectural role / difference |
+| Runtime | Current? | Purpose | Browser iframe | Backend involvement | Orion OS API? | Architectural role / difference |
 |---|---|---|---|---|---|---|
-| **direct** | yes | Show a site as an app in its own origin | Yes — `<iframe src=https://site>`, `SANDBOX_WEB` (incl. `allow-same-origin`) | Preflight only (`/api/web/inspect`); traffic goes browser→site | No (cross-origin) | Baseline. Site's own cookies/CSP/DRM apply; LTF never sees traffic. Fails when the site sends X-Frame-Options/frame-ancestors. |
+| **direct** | yes | Show a site as an app in its own origin | Yes — `<iframe src=https://site>`, `SANDBOX_WEB` (incl. `allow-same-origin`) | Preflight only (`/api/web/inspect`); traffic goes browser→site | No (cross-origin) | Baseline. Site's own cookies/CSP/DRM apply; Orion OS never sees traffic. Fails when the site sends X-Frame-Options/frame-ancestors. |
 | **embed** | yes (label only) | Load a provider's official embed URL | Yes — identical code path to direct | Same as direct | No (cross-origin) | **No distinct code today.** Semantic marker that `target` is an embeddable player/URL. Candidate to either formalise or merge. |
 | **external** | yes | Hand off to Orion / new tab for sites that shouldn't/can't be framed | No iframe | None (Orion does its own preflight when opened) | No (its own window is Orion, not the app) | The graceful-degradation path. `mountExternal()` renders an "Open in Orion" screen. |
 | **proxy / isolated (`proxy:"isolated"`)** | partial (transport, not a `runtime`) | Render framing-refusing HTML in an opaque-origin sandbox | Yes — `<iframe src=/proxy/page>`, `SANDBOX_ISOLATED` (no `allow-same-origin`) | Heavy: `page.rs` fetches, re-hosts HTML, injects `<base>`+shim, re-enforces framing | **No** (blocked by opaque origin + `/proxy/` gate) | Closest thing to a "web delivery" runtime, but reached via a side-flag, not `runtime`. Assets still load from real origin; no URL rewriting. |
@@ -341,7 +341,7 @@ Smallest safe progression grounded in the code:
 - **Step 17 — Decide `embed`'s fate.** Either give it distinct behaviour
   (e.g. provider-embed validation/aspect handling) or explicitly document it as
   an alias of `direct`. Cheap, clarifying.
-- **Step 18+ — (Only if a real product need exists) LTF-controlled web-delivery
+- **Step 18+ — (Only if a real product need exists) Orion OS-controlled web-delivery
   runtime.** Promote `/proxy/page` from a side-flag to a first-class runtime
   *behind a dedicated design + security review*. This is where asset delivery,
   session/state, and legal/policy questions live; it should not be started until

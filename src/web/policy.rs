@@ -1,7 +1,7 @@
 //! Embedding policy.
 //!
 //! A site states whether it may be displayed inside another site with
-//! `X-Frame-Options` and/or the CSP `frame-ancestors` directive. LTF OS
+//! `X-Frame-Options` and/or the CSP `frame-ancestors` directive. Orion OS
 //! **respects** both: if either forbids framing by a third party, the page
 //! is not shown in an app window (direct iframe or isolated proxy alike) and
 //! the UI offers to open it in a normal browser tab instead.
@@ -27,7 +27,7 @@ pub fn evaluate(headers: &HeaderMap) -> FramePolicy {
         return if sources.iter().any(|s| s == "*") {
             FramePolicy { embeddable: true, blocked_by: None }
         } else {
-            // 'self', 'none' or a specific host list: LTF OS is not a permitted ancestor.
+            // 'self', 'none' or a specific host list: Orion OS is not a permitted ancestor.
             FramePolicy { embeddable: false, blocked_by: Some("Content-Security-Policy frame-ancestors") }
         };
     }

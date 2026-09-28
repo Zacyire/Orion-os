@@ -11,7 +11,7 @@ security, reproduced in a real browser against a throwaway server (evidence in
 content*: authors ship a `.vapor` ZIP with a small `vapor.json`. The Rust
 backend verifies the package and extracts it into `data_dir/vapor/`, then
 serves it from an **opaque-origin sandbox** with no access to the shell,
-`/api`, or other packages. Each installed title becomes an LTF app entry
+`/api`, or other packages. Each installed title becomes an Orion OS app entry
 launched by a new, non-user-selectable `package` runtime. Its only default
 capability is its own `ltf.storage` namespace.
 
@@ -125,7 +125,7 @@ my-game/                 my-game-1.0.0.vapor (zip of the folder contents)
 | `category` | Short string (e.g. `Games`). |
 | `permissions` | Subset of the existing Step-10 ids; see §8. Unknown ids → install refused (not silently dropped, so authors notice). |
 | `window` | `{ "width", "height" }` initial size hint, clamped by the host. |
-| `min_ltf` | `MAJOR.MINOR.PATCH`; refuse install on older LTF. |
+| `min_ltf` | `MAJOR.MINOR.PATCH`; refuse install on older Orion OS. |
 | `network` | `"none"` \| `"optional"` \| `"required"`: an honest offline hint for the UI (§10). |
 
 **Never accepted from a manifest** (the host decides): `runtime`, `type`,
@@ -134,7 +134,7 @@ other apps. Unknown top-level keys are ignored (forward compatibility) and
 never copied anywhere. Hashes, sizes, screenshots and download URLs belong to
 the **catalog**, not the manifest (a package can't meaningfully hash itself).
 
-### Relationship to existing LTF app manifests: layered
+### Relationship to existing Orion OS app manifests: layered
 
 1. `vapor.json`: the author's untrusted input, validated by the backend.
 2. **Installed record**: a server-side, trusted record in `installed.json`
@@ -199,7 +199,7 @@ Add one runtime, **`package`**, through the Step-14 seam: one entry in
 
 Follow the existing convention: all mutable state lives under the single
 configurable `data_dir` (`LTF_DATA_DIR`, default `data/`, gitignored). There are
-no OS-specific paths anywhere in LTF today, and this design adds none. On
+no OS-specific paths anywhere in Orion OS today, and this design adds none. On
 Windows, macOS and Linux alike the location is whatever the operator sets;
 portable/dev mode is the default relative `data/`.
 
@@ -315,10 +315,10 @@ Assume every package is hostile.
 | DNS rebinding makes a hostile site same-origin with `/api` (including future install endpoints) | **Fixed in Step 21 (§15.1):** server-wide Host allowlist (`localhost`, IP literals, operator-listed exact names). |
 | MIME sniffing / script-as-image | Extension→MIME allowlist, `X-Content-Type-Options: nosniff`, unknown → `application/octet-stream`. |
 | Service-worker abuse | Opaque origins can't register service workers; the shell SW must bypass `/vapor/` (§10). |
-| Cookies / credentials | LTF sets no cookies (verified: no `Set-Cookie` in `src/`); opaque origins have none; `/api` is unreadable. |
-| Storage exhaustion (the whole LTF origin shares one `localStorage` quota) | Step 11 caps values at 100 KB but has no per-app total. Phase C adds a per-package total quota (e.g. 5 MB). |
+| Cookies / credentials | Orion OS sets no cookies (verified: no `Set-Cookie` in `src/`); opaque origins have none; `/api` is unreadable. |
+| Storage exhaustion (the whole Orion OS origin shares one `localStorage` quota) | Step 11 caps values at 100 KB but has no per-app total. Phase C adds a per-package total quota (e.g. 5 MB). |
 | Notification spam / phishing via `ltf.open` | Opt-in permissions, confirmed at install; per-app notify rate limit (Phase C). |
-| UI spoofing (fake LTF dialogs inside the game) | Host-controlled window title/icon from the installed record; no `document.title` override for packages. Residual: content inside the window is the author's. |
+| UI spoofing (fake Orion OS dialogs inside the game) | Host-controlled window title/icon from the installed record; no `document.title` override for packages. Residual: content inside the window is the author's. |
 | CPU/memory denial of service (infinite loops) | Opaque frames may share the shell's renderer process, so a busy loop can jank the shell. Mitigations: close window, `suspendOnMinimize`. **Residual, documented honestly.** |
 | Bundled first-party games | Remain trusted (same-origin). They are **part of the trusted base** and must never be the template for third-party content. |
 
@@ -422,15 +422,15 @@ Other isolation rules:
 
 ## 10. Offline model
 
-**What "offline" means here: no internet, and the LTF server is still
+**What "offline" means here: no internet, and the Orion OS server is still
 reachable** (the normal local install: `cargo run` → `localhost:8080`, README).
 
 | Scenario | Works offline? |
 |---|---|
-| Launch an installed package | **Yes.** Files are on the LTF server's disk and served locally; no network or SW needed. |
+| Launch an installed package | **Yes.** Files are on the Orion OS server's disk and served locally; no network or SW needed. |
 | Package that needs its own online services (multiplayer, CDN assets) | No. Vapor can't fix that; the manifest `network` hint lets the UI say so honestly. |
 | Browse remote catalog / install / update | No (downloads need the internet). A local `content/games.json` with local package URLs works for development. |
-| LTF hosted remotely, client offline | Nothing works; out of scope. |
+| Orion OS hosted remotely, client offline | Nothing works; out of scope. |
 
 **Service worker.** The shell SW caches every same-origin basic `GET`
 network-first into the shell cache (`sw.js:122`) and bypasses only `/api/`,
@@ -450,17 +450,17 @@ network-first into the shell cache (`sw.js:122`) and bypasses only `/api/`,
 
 | Kind | Scope |
 |---|---|
-| LTF-native package (`.vapor`) | What Vapor installs and runs. |
+| Orion OS-native package (`.vapor`) | What Vapor installs and runs. |
 | **Exportable HTML package** | The **original verified `.vapor` bytes**, served as `<id>-<version>.zip` (same sha256). Only if the catalog marks the item `exportable: true` (publisher intent/licensing; default `false`). |
 | Executables / native apps | **Out of scope.** Vapor never downloads or runs native binaries. |
 
-Running an export outside LTF works for a well-behaved HTML project. Limitations:
+Running an export outside Orion OS works for a well-behaved HTML project. Limitations:
 
 - Opening `index.html` via `file://` breaks ES modules and `fetch()`; users need
   any static server (e.g. `python -m http.server`).
 - `window.ltf` is absent, so games should feature-detect
   (`const store = window.ltf?.storage ?? localStorageAdapter`), which also gives
-  them saves outside LTF.
+  them saves outside Orion OS.
 - Absolute-path assets (`/assets/…`) break under subpaths; the Phase-F validator
   should warn on them.
 
@@ -640,7 +640,7 @@ queued.
 
 The shell imports app code by name in three places — `registry.loadModule`
 (`apps/<name>.js`), the web container's `fallback` and `panel`. Each goes
-through `trustedModule(kind, name)`: a frozen allowlist defined by LTF
+through `trustedModule(kind, name)`: a frozen allowlist defined by Orion OS
 (`app`: appstore, notepad, orion, settings, spiceify, vapor, webapp;
 `fallback`: youtube; `panel`: geforcenow), a bare-name grammar, and own-list
 membership — so unknown names, traversal, absolute/protocol/`javascript:`/`data:`

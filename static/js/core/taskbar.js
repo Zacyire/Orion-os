@@ -231,7 +231,7 @@ export const taskbar = {
     const renderTray = () => {
       const connected = navigator.onLine && netOnline;
       net.innerHTML = connected ? icons.wifi : icons.wifiOff;
-      net.title = !navigator.onLine ? 'No internet connection' : netOnline ? 'Connected' : 'LTF server unreachable';
+      net.title = !navigator.onLine ? 'No internet connection' : netOnline ? 'Connected' : 'Orion OS server unreachable';
       vol.innerHTML = system.muted || system.volume === 0 ? icons.mute : system.volume < 50 ? icons.volumeLow : icons.volume;
       vol.title = `Volume: ${system.muted ? 'muted' : `${system.volume}%`}`;
     };
@@ -276,7 +276,7 @@ export const taskbar = {
     muteBtn.addEventListener('click', () => { system.toggleMute(); muteBtn.innerHTML = system.muted ? icons.mute : icons.volume; });
 
     el.replaceChildren(
-      h('div.qs-head', h('span', { html: navigator.onLine ? icons.wifi : icons.wifiOff }), h('div', h('b', navigator.onLine ? 'Connected' : 'Offline'), h('small', netOnline ? 'LTF server reachable' : 'LTF server unreachable'))),
+      h('div.qs-head', h('span', { html: navigator.onLine ? icons.wifi : icons.wifiOff }), h('div', h('b', navigator.onLine ? 'Connected' : 'Offline'), h('small', netOnline ? 'Orion OS server reachable' : 'Orion OS server unreachable'))),
       h('div.qs-rows',
         row('Server latency', latency),
         conn?.effectiveType ? row('Connection', conn.effectiveType.toUpperCase()) : null,

@@ -1,7 +1,7 @@
 // YouTube — fallback experience for the YouTube web-app.
 //
 // The registry entry is a web-app targeting www.youtube.com, but youtube.com
-// forbids embedding (X-Frame-Options), which LTF OS respects. apps/webapp.js
+// forbids embedding (X-Frame-Options), which Orion OS respects. apps/webapp.js
 // therefore mounts this module as the app's sanctioned alternative: YouTube's
 // official IFrame embed player (youtube-nocookie.com) plus the Data API.
 // Home feed: content/youtube.json. Search: GET /api/youtube/search (needs
@@ -70,7 +70,7 @@ export default {
       if (!canSearch) {
         return fill(main, h('div.yt-notice', h('span', { html: icons.info }),
           h('b', 'Search isn’t configured on this server'),
-          h('p', 'Set YOUTUBE_API_KEY (YouTube Data API v3) on the LTF server to enable search. You can still paste any YouTube link or 11-character video ID.')));
+          h('p', 'Set YOUTUBE_API_KEY (YouTube Data API v3) on the Orion OS server to enable search. You can still paste any YouTube link or 11-character video ID.')));
       }
       fill(main, h('div.yt-loading', h('div.frame-spinner')));
       try {

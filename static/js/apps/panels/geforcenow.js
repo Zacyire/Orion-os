@@ -1,6 +1,6 @@
 // GeForce NOW side panel (opened from the ⓘ title-bar control of the
 // GeForce NOW web-app). Real measurements only: round-trip latency and
-// jitter to the LTF OS server, browser network information, connected
+// jitter to the Orion OS server, browser network information, connected
 // controllers (Gamepad API) and decode/streaming capabilities.
 import { h, local } from '../../core/dom.js';
 import { icons } from '../../core/icons.js';
@@ -20,7 +20,7 @@ export function mountPanel(el, ctx) {
     h('h2', 'Session details'),
     h('section.gfn-card',
       h('header', h('span', { html: icons.signal }), 'Connection'),
-      h('div.gfn-stat-row', h('div', h('small', 'Round-trip (LTF server)'), latencyVal), h('div', h('small', 'Jitter'), jitterVal)),
+      h('div.gfn-stat-row', h('div', h('small', 'Round-trip (Orion OS server)'), latencyVal), h('div', h('small', 'Jitter'), jitterVal)),
       spark, quality, h('div.gfn-netinfo', netInfo())),
     h('section.gfn-card', h('header', h('span', { html: icons.gamepad }), 'Controllers'), padsEl,
       h('small.gfn-hint', 'Press any button on a connected controller to wake it.')),

@@ -1,4 +1,4 @@
-//! LTF OS — backend entry point.
+//! Orion OS — backend entry point.
 //!
 //! Serves the desktop shell from `static/`, the JSON API under `/api`, the
 //! web layer (`/api/web/inspect`, `/proxy/page`, `/proxy/fetch`, `/net/…`;
@@ -55,7 +55,7 @@ async fn main() -> Result<(), BoxError> {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    tracing::info!("LTF OS listening on http://localhost:{port}");
+    tracing::info!("Orion OS listening on http://localhost:{port}");
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
@@ -494,8 +494,8 @@ mod tests {
 
     #[tokio::test]
     async fn host_policy_accepts_legitimate_hosts_on_every_route_kind() {
-        let app = test_app_with(|c| c.allowed_hosts = vec!["ltf.home.lan".into()]).await;
-        for host in ["localhost", "localhost:8080", "127.0.0.1:8080", "192.168.1.20:8080", "[::1]:8080", "ltf.home.lan", "LTF.home.lan:443"] {
+        let app = test_app_with(|c| c.allowed_hosts = vec!["orion.home.lan".into()]).await;
+        for host in ["localhost", "localhost:8080", "127.0.0.1:8080", "192.168.1.20:8080", "[::1]:8080", "orion.home.lan", "ORION.home.lan:443"] {
             for uri in ["/api/ping", "/", "/js/app.js"] {
                 assert_eq!(status_with_host(&app, Some(host), uri).await, StatusCode::OK, "{host} {uri}");
             }
@@ -504,10 +504,10 @@ mod tests {
 
     #[tokio::test]
     async fn host_policy_rejects_arbitrary_misleading_and_malformed_hosts() {
-        let app = test_app_with(|c| c.allowed_hosts = vec!["ltf.home.lan".into()]).await;
+        let app = test_app_with(|c| c.allowed_hosts = vec!["orion.home.lan".into()]).await;
         for host in [
             "evil.example", "evil.example:8080", "localhost.evil.example:8080", "evil.localhost:8080",
-            "blocks.pkg.localhost:8080", "ltf.home.lan.evil.example", "0.0.0.0:8080", "127.1:8080",
+            "blocks.pkg.localhost:8080", "orion.home.lan.evil.example", "0.0.0.0:8080", "127.1:8080",
             "user@localhost", "localhost:99999", "localhost:", "[::1",
         ] {
             // Every surface: JSON API, static shell, web layer, event socket.
@@ -646,7 +646,7 @@ mod tests {
             sorted_paths(&info),
             ["arch", "features", "features.proxy", "features.proxy_allowlist", "features.youtube_search", "name", "platform", "server", "uptime_secs", "version"]
         );
-        assert_eq!(info["name"], "LTF OS");
+        assert_eq!(info["name"], "Orion OS");
         let ping = get_json(&app, "/api/ping").await;
         assert_eq!(ping["pong"], true);
         assert!(get_json(&app, "/api/system/boot-log").await.as_array().is_some_and(|a| !a.is_empty()));

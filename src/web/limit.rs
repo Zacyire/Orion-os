@@ -3,7 +3,7 @@
 //! Each client IP gets `burst` tokens that refill at `per_minute / 60` per
 //! second; every proxied request costs one. Idle buckets are pruned so the
 //! map can't grow without bound. Client IP comes from the socket, or from
-//! `X-Forwarded-For` only when `LTF_TRUST_PROXY_HEADERS=1` (i.e. when LTF OS
+//! `X-Forwarded-For` only when `LTF_TRUST_PROXY_HEADERS=1` (i.e. when Orion OS
 //! runs behind a reverse proxy you control).
 
 use std::{

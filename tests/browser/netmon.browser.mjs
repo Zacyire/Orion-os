@@ -2,7 +2,7 @@
 //
 //   cargo build && node tests/browser/netmon.browser.mjs
 //
-// Self-contained and offline: starts a throwaway LTF OS server pointed at a
+// Self-contained and offline: starts a throwaway Orion OS server pointed at a
 // LOCAL mock connectivity target (LTF_NETCHECK_URL), so the real
 // /api/network/stats returns online without touching the public internet.
 // Offline / null-latency / API-failure states are exercised with in-browser

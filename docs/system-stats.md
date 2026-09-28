@@ -1,6 +1,6 @@
 # System stats API — `GET /api/system/stats`
 
-Read-only, live host statistics for **first-party LTF UI** (future desktop
+Read-only, live host statistics for **first-party Orion OS UI** (future desktop
 widgets such as a system monitor). Internal: it is not part of `window.ltf`
 and is not offered to web apps.
 
@@ -61,7 +61,7 @@ const stats = await api.get('/system/stats');
   disks, network interfaces or credentials. The `sysinfo` features that could
   enumerate users, disks, networks or components are not compiled in.
 - **Who can read it.** Same boundary as every `/api/*` route: the server sends
-  no CORS headers, so only same-origin (first-party LTF) pages can read the
+  no CORS headers, so only same-origin (first-party Orion OS) pages can read the
   response. Cross-origin web apps (direct/embed) and opaque-origin
   `/proxy/page` documents cannot. A route test pins the "no CORS headers"
   property.
@@ -104,12 +104,12 @@ Fixed schema (`schema: 1`):
 
 ## What `latency_ms` measures — and what it does NOT
 
-`latency_ms` is the time for the **LTF server** to complete one lightweight HTTP
+`latency_ms` is the time for the **Orion OS server** to complete one lightweight HTTP
 GET to a single, **server-configured** destination (`LTF_NETCHECK_URL`, default
 `https://cloudflare.com/cdn-cgi/trace`). It is the **server's** network path.
 
-It is **not** the user's browser "ping". If LTF runs on the user's own machine
-the two are similar; if LTF is hosted remotely, this measures the server's path,
+It is **not** the user's browser "ping". If Orion OS runs on the user's own machine
+the two are similar; if Orion OS is hosted remotely, this measures the server's path,
 not the user's. The widget labels it "Network latency / server → network"
 accordingly, never "your ping".
 

@@ -23,7 +23,7 @@ import { trustedModule } from './modules.js';
 
 let catalog = [];
 
-// LTF App Catalog: apps available to install, distinct from installed apps
+// Orion OS App Catalog: apps available to install, distinct from installed apps
 // (localStorage) and built-in apps (apps.json). Static for now; loadCatalog is
 // the single seam a remote catalog would later replace.
 let catalogApps = [];

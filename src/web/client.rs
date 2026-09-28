@@ -29,7 +29,7 @@ pub const FORWARD_REQUEST_HEADERS: &[HeaderName] = &[
     header::IF_MODIFIED_SINCE,
 ];
 
-const FALLBACK_UA: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36 LTF-OS";
+const FALLBACK_UA: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36 Orion-OS";
 
 pub fn build(target: &Target, client_headers: &HeaderMap, cfg: &Config) -> Result<reqwest::Client, WebError> {
     let ua = client_headers

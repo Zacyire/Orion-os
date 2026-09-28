@@ -13,7 +13,7 @@ use crate::{error::ApiError, state::SharedState};
 pub async fn info(State(state): State<SharedState>) -> Json<Value> {
     let c = &state.config;
     Json(json!({
-        "name": "LTF OS",
+        "name": "Orion OS",
         "version": env!("CARGO_PKG_VERSION"),
         "server": format!("ltf-os/{} (axum)", env!("CARGO_PKG_VERSION")),
         "arch": std::env::consts::ARCH,
@@ -63,7 +63,7 @@ pub async fn boot_log(State(state): State<SharedState>) -> Json<Vec<Value>> {
         ("ok", "Finished Load Kernel Modules.".into()),
         ("ok", "Started Journal Service.".into()),
         ("ok", "Finished Coldplug All udev Devices.".into()),
-        ("ok", "Mounted LTF Data Volume.".into()),
+        ("ok", "Mounted Orion OS Data Volume.".into()),
         ("ok", "Reached target Local File Systems.".into()),
         ("ok", "Finished Create Volatile Files and Directories.".into()),
         ("ok", "Reached target System Initialization.".into()),
@@ -73,8 +73,8 @@ pub async fn boot_log(State(state): State<SharedState>) -> Json<Vec<Value>> {
         ("ok", "Started D-Bus System Message Bus.".into()),
         ("ok", "Started Network Configuration.".into()),
         ("ok", "Reached target Network.".into()),
-        ("ok", format!("Started LTF API Server {} on port {}.", env!("CARGO_PKG_VERSION"), c.port)),
-        ("ok", "Listening on LTF Event Socket (/ws).".into()),
+        ("ok", format!("Started Orion OS API Server {} on port {}.", env!("CARGO_PKG_VERSION"), c.port)),
+        ("ok", "Listening on Orion OS Event Socket (/ws).".into()),
         ("ok", "Loaded Application Registry.".into()),
     ];
     units.push(if c.proxy_enabled {

@@ -27,7 +27,7 @@ const DEFAULT_DIAL = [
 const MODES = { direct: 'Direct', isolated: 'Isolated' };
 const MODE_HELP = {
   direct: 'Sites load normally in their own origin — sign-ins and media work.',
-  isolated: 'Pages render through the LTF OS server in a sandbox without cookies; the address bar follows navigation.',
+  isolated: 'Pages render through the Orion OS server in a sandbox without cookies; the address bar follows navigation.',
 };
 
 /** Turn address-bar input into a URL: explicit URL, bare domain, or search. */
@@ -189,7 +189,7 @@ export default {
       star.classList.toggle('on', !!t?.url && bookmarks.some((b) => b.url === t.url));
       const secure = t?.url?.startsWith('https:');
       lock.innerHTML = t?.url ? (t.proxied ? icons.shield : secure ? icons.lock : icons.info) : icons.search;
-      lock.title = !t?.url ? '' : t.proxied ? 'Isolated: rendered by the LTF OS server in a sandbox' : secure ? 'Secure connection' : 'Not secure';
+      lock.title = !t?.url ? '' : t.proxied ? 'Isolated: rendered by the Orion OS server in a sandbox' : secure ? 'Secure connection' : 'Not secure';
       lock.dataset.state = t?.proxied ? 'proxy' : secure ? 'secure' : 'plain';
       ctx.win.setTitle(t?.url ? `${t.title} — Orion` : 'Orion');
       renderTabs();

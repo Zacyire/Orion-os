@@ -223,7 +223,7 @@ export default {
       const web = all.filter((x) => x.custom);
       fill(main,
         hero,
-        catalogAll.length ? h('div.section-title', 'LTF App Catalog', h('small.muted', ' · available to install')) : null,
+        catalogAll.length ? h('div.section-title', 'Orion OS App Catalog', h('small.muted', ' · available to install')) : null,
         catalogAll.length ? catalogControls(catalogAll) : null,
         catalogAll.length ? catalogBody : null,
         h('div.section-title', 'Apps'), h('div.store-grid', all.filter((x) => !x.custom).map(card)),

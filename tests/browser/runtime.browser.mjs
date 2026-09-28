@@ -2,7 +2,7 @@
 //
 //   cargo build && node tests/browser/runtime.browser.mjs
 //
-// Self-contained: starts a throwaway LTF OS server (free port, temporary data
+// Self-contained: starts a throwaway Orion OS server (free port, temporary data
 // dir) and a local HTML test site, then drives the real OS in Chromium via
 // Playwright. The throwaway server is started with LTF_PROXY_ALLOW_PRIVATE=1 so
 // its preflight and /proxy/page can reach the local test site; that setting is
@@ -58,9 +58,9 @@ const site = http.createServer((req, res) => { res.writeHead(200, { 'content-typ
 await new Promise((r) => site.listen(0, '127.0.0.1', r));
 const SITE = `http://127.0.0.1:${site.address().port}/`;
 
-// Throwaway LTF OS server.
+// Throwaway Orion OS server.
 const bin = process.env.LTF_BIN || path.join(REPO, 'target/debug/ltf-os');
-if (!fs.existsSync(bin)) { console.error(`LTF OS binary not found at ${bin} — run \`cargo build\` or set LTF_BIN.`); process.exit(2); }
+if (!fs.existsSync(bin)) { console.error(`Orion OS binary not found at ${bin} — run \`cargo build\` or set LTF_BIN.`); process.exit(2); }
 const port = await freePort();
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ltf-runtime-test-'));
 const server = spawn(bin, [], {
@@ -168,7 +168,7 @@ try {
   check('proxy: /proxy/page sandbox CSP unchanged (no allow-same-origin)', /^sandbox /.test(proxied || '') && !proxied.includes('allow-same-origin'), proxied);
   await closeWin(isoArg.winId); await closeWin(extIso.winId);
 
-  // ── LTF API boundary unchanged ──
+  // ── window.ltf API boundary unchanged ──
   async function bridgeReplies(winId) {
     const fr = await (await page.$(`.window[data-id="${winId}"] iframe`)).contentFrame();
     return fr.evaluate(() => new Promise((resolve) => {
@@ -181,13 +181,13 @@ try {
     }));
   }
   const d2 = await launch(dId);
-  check('api: direct frame receives no LTF API reply', (await bridgeReplies(d2.winId)) === false);
+  check('api: direct frame receives no window.ltf reply', (await bridgeReplies(d2.winId)) === false);
   await closeWin(d2.winId);
   const e2 = await launch(eId);
-  check('api: embed frame receives no LTF API reply', (await bridgeReplies(e2.winId)) === false);
+  check('api: embed frame receives no window.ltf reply', (await bridgeReplies(e2.winId)) === false);
   await closeWin(e2.winId);
-  check('api: isolated /proxy/page frame receives no LTF API reply', (await bridgeReplies(a.winId)) === false);
-  check('api: isolated embed frame receives no LTF API reply', (await bridgeReplies(b.winId)) === false);
+  check('api: isolated /proxy/page frame receives no window.ltf reply', (await bridgeReplies(a.winId)) === false);
+  check('api: isolated embed frame receives no window.ltf reply', (await bridgeReplies(b.winId)) === false);
   await closeWin(a.winId); await closeWin(b.winId);
 
   const pg = await launch('playground');

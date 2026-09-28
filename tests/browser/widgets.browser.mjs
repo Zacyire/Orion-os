@@ -2,7 +2,7 @@
 //
 //   cargo build && node tests/browser/widgets.browser.mjs
 //
-// Self-contained: starts a throwaway LTF OS server (free port, temp data dir)
+// Self-contained: starts a throwaway Orion OS server (free port, temp data dir)
 // and drives the real desktop in Chromium. Playwright is resolved from a local
 // install or `npm root -g` (override with CHROMIUM_PATH). The widget reads the
 // real GET /api/system/stats; failure/recovery is exercised by intercepting

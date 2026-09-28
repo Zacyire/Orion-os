@@ -1,7 +1,7 @@
 //! Resource fetching — the `/net/` namespace.
 //!
 //! `GET /net/<percent-encoded absolute URL>` (and the equivalent
-//! `GET /proxy/fetch?url=`) returns a remote resource from the LTF OS
+//! `GET /proxy/fetch?url=`) returns a remote resource from the Orion OS
 //! origin. It exists for data the browser can't read cross-origin because
 //! of the same-origin policy: JSON/XML APIs and feeds, images drawn into a
 //! canvas, favicons and thumbnails the service worker caches, media byte
@@ -14,7 +14,7 @@
 //!   remote site are not relayed;
 //! * responses are served with `Content-Security-Policy: sandbox` and
 //!   `X-Content-Type-Options: nosniff`, so fetched HTML/SVG can never run
-//!   script in the LTF OS origin, and `Cross-Origin-Resource-Policy:
+//!   script in the Orion OS origin, and `Cross-Origin-Resource-Policy:
 //!   same-origin`, so other websites can't hotlink this server as a proxy.
 
 use std::time::Instant;

@@ -2,7 +2,7 @@
 name = "ltf-os"
 version = "0.1.0"
 edition = "2021"
-description = "LTF OS — a web desktop platform for games and media, with a Rust API layer"
+description = "Orion OS — a web desktop platform for games and media, with a Rust API layer"
 license = "MIT"
 
 [dependencies]

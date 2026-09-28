@@ -83,7 +83,7 @@ impl AppState {
         }
 
         let http = reqwest::Client::builder()
-            .user_agent(concat!("Mozilla/5.0 (compatible; LTF-OS/", env!("CARGO_PKG_VERSION"), ")"))
+            .user_agent(concat!("Mozilla/5.0 (compatible; Orion-OS/", env!("CARGO_PKG_VERSION"), ")"))
             .timeout(Duration::from_secs(20))
             .connect_timeout(Duration::from_secs(8))
             // Redirects are handled by the proxy itself so every hop is re-validated.
@@ -203,7 +203,7 @@ pub fn default_prefs() -> Value {
     })
 }
 
-const WELCOME_DOC: &str = r#"# Welcome to LTF OS
+const WELCOME_DOC: &str = r#"# Welcome to Orion OS
 
 This document lives on the server in `data/files/` and is editable in Notepad.
 

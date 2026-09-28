@@ -1,4 +1,4 @@
-// LTF App API — host bridge.
+// Orion OS App API — host bridge.
 //
 // Serves `window.ltf` (static/ltf-api.js) to first-party app frames using
 // existing OS facilities (Orion for URLs, toasts, per-app storage, the WM).

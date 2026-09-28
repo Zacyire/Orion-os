@@ -6,7 +6,7 @@
 //   webapp.js panel       → js/apps/panels/<panel>.js   (kind "panel")
 // A name coming from app data (a manifest, localStorage, a future Vapor
 // package) must never be able to choose which same-origin script runs in the
-// shell. So the set is fixed here, by LTF itself; anything else — unknown
+// shell. So the set is fixed here, by Orion OS itself; anything else — unknown
 // names, paths, URLs, `javascript:`/`data:`, encoded traversal, inherited
 // property names, non-strings — fails closed. Adding a shell module means
 // adding its name here (tests/runtime-contract.test.mjs checks every name has

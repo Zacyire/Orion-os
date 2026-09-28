@@ -11,7 +11,7 @@ use crate::state::SharedState;
 /// first-party desktop UI. Fixed schema, no parameters: nothing in the request
 /// selects a destination (see src/netstats.rs and docs/system-stats.md).
 ///
-/// `latency_ms` is the LTF **server's** round-trip to a fixed, server-configured
+/// `latency_ms` is the Orion OS **server's** round-trip to a fixed, server-configured
 /// endpoint — not the user's browser ping. A real probe runs at most once per
 /// `netstats::MIN_REFRESH`; requests in between share the cached snapshot.
 pub async fn stats(State(state): State<SharedState>) -> Response {

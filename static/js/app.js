@@ -1,4 +1,4 @@
-// LTF OS — frontend entry point.
+// Orion OS — frontend entry point.
 import { runBoot } from './core/boot.js';
 import { store } from './core/store.js';
 import { registry } from './core/registry.js';

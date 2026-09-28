@@ -1,6 +1,6 @@
 //! Error codes for the web layer. The same code strings are used by the
 //! frontend error screens (static/js/core/frame.js → ERRORS), so an error
-//! raised here renders as a native LTF OS screen in the app window.
+//! raised here renders as a native Orion OS screen in the app window.
 
 use axum::{
     http::{header, HeaderValue, StatusCode},
@@ -95,7 +95,7 @@ impl WebError {
     }
 
     /// Self-contained HTML error page for iframe navigations (`/proxy/page`).
-    /// Styled to match LTF OS; served with a script-free sandbox CSP.
+    /// Styled to match Orion OS; served with a script-free sandbox CSP.
     pub fn html(&self, target: &str) -> Response {
         let page = format!(
             r#"<!doctype html><meta charset="utf-8"><meta name="ltf-error" content="{code}"><title>{title}</title>

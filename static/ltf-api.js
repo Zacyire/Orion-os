@@ -1,6 +1,6 @@
-// LTF App API — client shim.
+// Orion OS App API — client shim.
 //
-// Include in a FIRST-PARTY LTF app page (a page served from the LTF OS origin
+// Include in a FIRST-PARTY Orion OS app page (a page served from the Orion OS origin
 // and shown in an app window):
 //
 //   <script src="/ltf-api.js"></script>
