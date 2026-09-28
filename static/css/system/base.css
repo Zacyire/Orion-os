@@ -8,10 +8,23 @@ html, body {
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font: var(--fs)/1.45 var(--font);
+  font: var(--fs)/var(--lh) var(--font);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   user-select: none;
 }
+
+::selection { background: color-mix(in srgb, var(--accent-color) 45%, transparent); color: var(--text); }
+
+/* Keyboard focus: one consistent ring everywhere (mouse clicks don't show it).
+   :where() keeps specificity at zero so components can refine it. */
+:where(button, a, [tabindex], summary, input[type="checkbox"], input[type="radio"], input[type="range"]):focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-sm);
+}
+:where(button, a, [tabindex]):focus:not(:focus-visible) { outline: none; }
 
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
 input, textarea, select { font: inherit; color: inherit; }
@@ -28,7 +41,7 @@ kbd {
 ::-webkit-scrollbar-track { background: transparent; }
 
 .glass {
-  background: var(--acrylic);
+  background: var(--glass-float);
   backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
   -webkit-backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
   border: 1px solid var(--border);
@@ -41,21 +54,25 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 input[type="range"]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-color); border: 4px solid var(--surface-solid); }
 
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   height: 32px; padding: 0 14px; border-radius: var(--radius-sm);
-  background: var(--surface-3); border: 1px solid var(--border); font-size: var(--fs-sm);
-  transition: background var(--dur-fast), transform var(--dur-fast), filter var(--dur-fast); white-space: nowrap;
+  background: var(--surface-3); border: 1px solid var(--border); font-size: var(--fs-sm); font-weight: var(--fw-medium);
+  box-shadow: var(--highlight);
+  transition: background var(--dur-fast), transform var(--dur-fast), filter var(--dur-fast), box-shadow var(--dur-fast); white-space: nowrap;
 }
 .btn:hover { background: var(--surface-hover); filter: brightness(1.15); }
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.5; pointer-events: none; }
-.btn.primary { background: var(--accent-color); color: var(--accent-color-contrast); border-color: transparent; }
+.btn:active { transform: scale(0.97); filter: brightness(0.95); }
+.btn:disabled { opacity: 0.45; pointer-events: none; }
+.btn.primary { background: var(--accent-color); color: var(--accent-color-contrast); border-color: transparent; box-shadow: var(--highlight), 0 4px 14px color-mix(in srgb, var(--accent-color) 30%, transparent); }
 .btn.danger { background: color-mix(in srgb, var(--danger) 85%, black); color: #fff; border-color: transparent; }
 .btn.ghost { background: transparent; border-color: transparent; }
 .btn svg { width: 16px; height: 16px; }
 
 .field { width: 100%; height: 34px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); border-bottom-color: var(--border-strong); background: var(--surface-2); outline: none; }
-.field:focus { border-bottom: 2px solid var(--accent-color); background: var(--surface-3); }
+.field { transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.field:hover { background: var(--surface-3); }
+.field:focus { border-color: var(--border-accent); border-bottom: 2px solid var(--accent-color); background: var(--surface-3); }
+.field:focus-visible { box-shadow: 0 0 0 3px var(--accent-color-faint); }
 select.field { cursor: pointer; }
 select.field option { background: var(--surface-solid); }
 
@@ -65,12 +82,20 @@ select.field option { background: var(--surface-solid); }
 .toggle i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); transition: all var(--dur) var(--ease-spring); }
 .toggle input:checked + i { background: var(--accent-color); border-color: var(--accent-color); }
 .toggle input:checked + i::after { left: 23px; background: var(--accent-color-contrast); }
+.toggle input:focus-visible { outline: none; }
 .toggle input:focus-visible + i { box-shadow: var(--focus-ring); }
 
-@keyframes pop-in { from { opacity: 0; transform: scale(0.94); } }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.96); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Reduced motion (OS preference): movement becomes instant and nothing loops.
+   Loading spinners stay visible as static rings. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  *, *::before, *::after {
+    animation-duration: 1ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important; scroll-behavior: auto !important;
+  }
 }
 body.is-dragging, body.is-dragging * { cursor: grabbing !important; }

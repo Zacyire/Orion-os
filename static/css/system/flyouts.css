@@ -1,18 +1,18 @@
+/* Flyouts (launcher, quick settings, calendar): float glass, e4, xl radius. */
 .flyout {
-  position: absolute; z-index: 5500;
-  background: var(--acrylic);
-  backdrop-filter: blur(var(--system-glass-blur-strong)) saturate(var(--system-glass-saturate));
-  -webkit-backdrop-filter: blur(var(--system-glass-blur-strong)) saturate(var(--system-glass-saturate));
+  position: absolute; z-index: var(--z-flyout);
+  background: var(--glass-float);
+  backdrop-filter: blur(var(--blur-lg)) saturate(var(--system-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(var(--system-glass-saturate));
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg), var(--highlight);
-  animation: flyout-in var(--dur-slow) var(--ease);
+  box-shadow: var(--elev-4), var(--highlight);
+  animation: flyout-in var(--dur-slow) var(--ease-out);
   transform-origin: var(--origin, bottom center);
 }
 .flyout.closing { animation: flyout-out var(--dur) var(--ease) forwards; }
-@keyframes flyout-in { from { opacity: 0; transform: translate(var(--fx, 0), var(--fy, 24px)) scale(0.98); } }
-@keyframes flyout-out { to { opacity: 0; transform: translate(var(--fx, 0), var(--fy, 16px)) scale(0.98); } }
-@keyframes pop-in { from { opacity: 0; transform: scale(0.94); } }
+@keyframes flyout-in { from { opacity: 0; transform: translate(var(--fx, 0), var(--fy, 20px)) scale(0.98); } }
+@keyframes flyout-out { to { opacity: 0; transform: translate(var(--fx, 0), var(--fy, 12px)) scale(0.98); } }
 
 /* flyout anchoring per taskbar edge */
 body.tb-bottom .flyout { bottom: calc(var(--tb-offset) + 4px); --fy: 24px; --fx: 0; }
@@ -25,27 +25,37 @@ body.tb-bottom #start-menu, body.tb-top #start-menu { left: 50%; margin-left: ca
 body.tb-bottom:not(.tb-centered) #start-menu, body.tb-top:not(.tb-centered) #start-menu { left: var(--tb-gap); margin-left: 0; }
 body.tb-left #start-menu, body.tb-right #start-menu { top: var(--tb-gap); }
 
+/* Launcher (start menu) — Phase 1 establishes its surface language only:
+   pill search, section headings, uniform tile grid. Phase 3 rebuilds layout. */
 .sm-search { margin: 24px 28px 8px; position: relative; }
 .sm-search input {
-  width: 100%; height: 38px; padding: 0 14px 0 40px; border-radius: 20px;
-  border: 1px solid var(--border); border-bottom: 2px solid var(--accent-color);
-  background: var(--surface-2); outline: none;
+  width: 100%; height: 40px; padding: 0 14px 0 42px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border); background: var(--surface-2); outline: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
 }
-.sm-search input:focus { background: var(--surface-3); }
-.sm-search svg { position: absolute; left: 14px; top: 11px; width: 16px; height: 16px; color: var(--text-2); }
+.sm-search input::placeholder { color: var(--text-3); }
+.sm-search input:hover { background: var(--surface-3); }
+.sm-search input:focus { background: var(--surface-3); border-color: var(--border-accent); box-shadow: 0 0 0 3px var(--accent-color-faint), inset 0 1px 2px rgba(0, 0, 0, 0.18); }
+.sm-search svg { position: absolute; left: 15px; top: 12px; width: 16px; height: 16px; color: var(--text-3); }
 .sm-body { flex: 1; overflow-y: auto; padding: 8px 20px; }
-.sm-heading { display: flex; justify-content: space-between; align-items: center; margin: 14px 12px 8px; font-weight: 600; }
+.sm-heading { display: flex; justify-content: space-between; align-items: center; margin: 16px 12px 8px; font-weight: var(--fw-semibold); font-size: var(--fs-sm); letter-spacing: 0.01em; }
 .sm-heading small { color: var(--text-2); font-weight: 400; }
 .sm-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .sm-app {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 12px 4px 10px; border-radius: var(--radius); font-size: var(--fs-xs); text-align: center;
-  transition: background var(--dur-fast);
+  color: var(--text); transition: background var(--dur-fast);
 }
 .sm-app:hover, .sm-app.kb-active { background: var(--surface-hover); }
-.sm-app .app-icon { width: 36px; height: 36px; }
+.sm-app.kb-active { box-shadow: inset 0 0 0 1px var(--border-accent); }
+.sm-app:focus-visible { outline: var(--focus-outline); outline-offset: -2px; border-radius: var(--radius); }
+.sm-app .app-icon { width: 38px; height: 38px; transition: transform var(--dur) var(--ease-spring); }
+.sm-app:hover .app-icon { transform: translateY(-2px); }
+.sm-app:active .app-icon { transform: scale(0.94); }
 .sm-list-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border-radius: var(--radius); text-align: left; }
 .sm-list-item:hover, .sm-list-item.kb-active { background: var(--surface-hover); }
+.sm-list-item:focus-visible { outline: var(--focus-outline); outline-offset: -2px; }
 .sm-list-item small { display: block; color: var(--text-3); font-size: var(--fs-xs); }
 .sm-footer {
   display: flex; justify-content: space-between; align-items: center;
@@ -57,8 +67,9 @@ body.tb-left #start-menu, body.tb-right #start-menu { top: var(--tb-gap); }
 .sm-user:hover { background: var(--surface-hover); }
 .sm-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: var(--surface-3); }
 .sm-power { position: relative; }
-.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--radius); }
-.icon-btn:hover { background: var(--surface-hover); }
+.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--radius); color: var(--text-2); transition: background var(--dur-fast), color var(--dur-fast); }
+.icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+.icon-btn:active { background: var(--surface-active); }
 .icon-btn svg { width: 18px; height: 18px; }
 
 /* Quick settings */
@@ -69,10 +80,12 @@ body.tb-right #quick-settings { bottom: var(--tb-gap); }
 .qs-tile {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   height: 64px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border);
-  font-size: var(--fs-xs); transition: background var(--dur-fast);
+  font-size: var(--fs-xs); box-shadow: var(--highlight); transition: background var(--dur-fast), transform var(--dur-fast);
 }
+.qs-tile:hover { background: var(--surface-hover); }
+.qs-tile:active { transform: scale(0.97); }
 .qs-tile svg { width: 18px; height: 18px; }
-.qs-tile.on { background: var(--accent-color); color: var(--accent-color-contrast); border-color: transparent; }
+.qs-tile.on { background: var(--accent-color); color: var(--accent-color-contrast); border-color: transparent; box-shadow: var(--highlight), 0 4px 14px color-mix(in srgb, var(--accent-color) 30%, transparent); }
 .qs-slider { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
 .qs-slider svg { width: 18px; height: 18px; flex: none; }
 .qs-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--text-2); font-size: var(--fs-sm); }
@@ -82,12 +95,12 @@ body.tb-right #quick-settings { bottom: var(--tb-gap); }
 body.tb-left #calendar-flyout { bottom: var(--tb-gap); right: auto; }
 body.tb-right #calendar-flyout { bottom: var(--tb-gap); }
 .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.cal-big { font-size: 30px; font-weight: 300; }
+.cal-big { font-family: var(--font-display); font-size: 30px; font-weight: 300; font-variant-numeric: tabular-nums; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font-size: var(--fs-sm); }
 .cal-grid b { color: var(--text-3); font-weight: 500; padding: 6px 0; }
 .cal-grid span { padding: 7px 0; border-radius: 50%; }
 .cal-grid span.muted { color: var(--text-3); }
-.cal-grid span.today { background: var(--accent-color); color: var(--accent-color-contrast); font-weight: 700; }
+.cal-grid span.today { background: var(--accent-color); color: var(--accent-color-contrast); font-weight: 700; box-shadow: 0 2px 10px color-mix(in srgb, var(--accent-color) 40%, transparent); }
 
 @media (max-width: 640px) {
   .sm-grid { grid-template-columns: repeat(4, 1fr); }

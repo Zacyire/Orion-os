@@ -403,7 +403,9 @@ try {
   await page.evaluate(() => fetch('/logout', { method: 'POST' }));
   const afterLogout = await page.evaluate(async () => (await fetch('/api/ping')).status);
   check('after sign-out the API refuses the browser (401)', afterLogout === 401, String(afterLogout));
-  await page.goto(`${ORIGIN}/`);
+  // The desktop's own 401 handler (e.g. a widget poll) may already be navigating to the sign-in page.
+  await page.goto(`${ORIGIN}/`).catch(() => {});
+  await page.waitForSelector('#key', { timeout: 15000 }).catch(() => {});
   check(`after sign-out, navigation shows the sign-in page${swActive ? ' (service worker active, not served from cache)' : ''}`, await page.locator('form[action="/login"]').count() === 1);
   const oldCookieWs = await wsUpgrade({ cookie: cookieHeader, origin: ORIGIN });
   check('a copied cookie is dead after sign-out (WebSocket 401)', oldCookieWs.status === 401, String(oldCookieWs.status));

@@ -3,103 +3,109 @@
    desktop icons (which flow top-left) and the taskbar. Adding a widget needs
    no per-widget placement — it simply joins the column. */
 #widgets {
-  position: absolute; inset: 0; z-index: 5;
+  position: absolute; inset: 0; z-index: var(--z-widgets);
   pointer-events: none;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 16px;
-  padding: 20px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-3);
+  padding: var(--space-5);
+  overflow: hidden;
 }
-#widgets > .widget { pointer-events: auto; width: 264px; max-width: calc(100vw - 40px); }
-body.tb-top #widgets { padding-top: calc(var(--tb-offset) + 20px); }
-body.tb-right #widgets { padding-right: calc(var(--tb-offset) + 20px); }
+#widgets > .widget { pointer-events: auto; width: 272px; max-width: calc(100vw - 40px); }
+body.tb-top #widgets { padding-top: calc(var(--tb-offset) + var(--space-5)); }
+body.tb-right #widgets { padding-right: calc(var(--tb-offset) + var(--space-5)); }
+
+/* ─── Shared widget card ───
+   Every first-party widget renders one root card (.clock / .sysmon / .netmon).
+   They share this single float-glass surface so the column reads as one
+   system; each widget only styles its own contents below. Widgets use the
+   lighter float blur (not the strong one) because several are always on screen. */
+.clock, .sysmon, .netmon {
+  display: flex; flex-direction: column;
+  padding: 14px 16px 15px;
+  border-radius: var(--radius-xl);
+  background: var(--glass-float);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--system-glass-saturate));
+  backdrop-filter: blur(var(--blur)) saturate(var(--system-glass-saturate));
+  border: 1px solid var(--border);
+  box-shadow: var(--elev-2), var(--highlight);
+  color: var(--text);
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+}
+#widgets > .widget:nth-child(2) > * { animation-delay: 60ms; }
+#widgets > .widget:nth-child(3) > * { animation-delay: 120ms; }
+
+/* Shared widget header row: icon + title on the left, status on the right. */
+.sysmon-head, .netmon-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sysmon-title, .netmon-title { display: inline-flex; align-items: center; gap: 7px; font-weight: var(--fw-semibold); font-size: var(--fs-sm); letter-spacing: 0.01em; }
+.sysmon-ico, .netmon-ico { display: inline-flex; color: var(--accent-color); }
+.sysmon-ico svg, .netmon-ico svg { width: 14px; height: 14px; display: block; }
+/* Shared uppercase caption style. */
+.sysmon-label, .netmon-metric-label { font-size: var(--fs-2xs); color: var(--text-3); text-transform: uppercase; letter-spacing: var(--tracking-caps); font-weight: var(--fw-semibold); }
+/* Shared status dot colours. */
+.sysmon-dot, .netmon-dot { border-radius: 50%; background: var(--text-3); transition: background var(--dur-fast), box-shadow var(--dur-fast); }
 
 /* ─── System Monitor ─── */
-.sysmon {
-  display: flex; flex-direction: column; gap: 12px;
-  padding: 14px 16px 15px;
-  border-radius: var(--radius-lg);
-  background: var(--acrylic);
-  -webkit-backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
-  backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
-  border: 1px solid var(--system-glass-border);
-  box-shadow: var(--shadow-lg, 0 18px 40px rgba(0, 0, 0, 0.4)), var(--system-glass-highlight);
-  color: var(--text);
-  animation: pop-in var(--dur, 200ms) var(--ease, ease);
-}
+.sysmon { gap: 12px; }
 
-.sysmon-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.sysmon-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.01em; }
-.sysmon-ico { display: inline-flex; color: var(--accent-color); }
-.sysmon-ico svg, .sysmon-label svg, .sysmon-facts dt svg { width: 14px; height: 14px; display: block; }
+.sysmon-label svg, .sysmon-facts dt svg { width: 13px; height: 13px; display: block; }
 
 .sysmon-state { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-3); }
-.sysmon-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); box-shadow: 0 0 6px transparent; transition: background var(--dur-fast, 120ms); }
-.sysmon-dot[data-kind="ok"] { background: #37d399; box-shadow: 0 0 7px rgba(55, 211, 153, 0.7); }
-.sysmon-dot[data-kind="wait"] { background: #f5b942; }
-.sysmon-dot[data-kind="off"] { background: #ff5a67; box-shadow: 0 0 7px rgba(255, 90, 103, 0.5); }
+.sysmon-dot { width: 7px; height: 7px; }
+.sysmon-dot[data-kind="ok"] { background: var(--success); box-shadow: 0 0 7px color-mix(in srgb, var(--success) 70%, transparent); }
+.sysmon-dot[data-kind="wait"] { background: var(--warning); }
+.sysmon-dot[data-kind="off"] { background: var(--danger); box-shadow: 0 0 7px color-mix(in srgb, var(--danger) 50%, transparent); }
 
 .sysmon-metric { display: flex; flex-direction: column; gap: 6px; }
 .sysmon-metric-top { display: flex; align-items: baseline; justify-content: space-between; }
-.sysmon-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.sysmon-label { display: inline-flex; align-items: center; gap: 6px; }
 .sysmon-label svg { color: var(--text-3); }
-.sysmon-metric-top b { font-size: var(--fs-md, 15px); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sysmon-metric-top b { font-size: var(--fs-md); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
 
-.sysmon-bar { height: 6px; border-radius: 999px; background: rgba(127, 128, 147, 0.22); overflow: hidden; }
+.sysmon-bar { height: 5px; border-radius: var(--radius-pill); background: var(--surface-3); overflow: hidden; }
 .sysmon-bar i {
   display: block; height: 100%; width: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 55%, #00d4ff));
-  transition: width 600ms var(--ease, ease), background 300ms ease;
+  background: var(--accent-gradient);
+  transition: width 600ms var(--ease-out), background 300ms ease;
 }
-.sysmon-bar i[data-level="mid"] { background: linear-gradient(90deg, #f5b942, #ffb35a); }
-.sysmon-bar i[data-level="high"] { background: linear-gradient(90deg, #ff7a59, #ff5a67); }
-.sysmon-bar i[data-level="none"] { background: rgba(127, 128, 147, 0.4); }
+.sysmon-bar i[data-level="mid"] { background: linear-gradient(90deg, var(--warning), #ffb35a); }
+.sysmon-bar i[data-level="high"] { background: linear-gradient(90deg, #ff7a59, var(--danger)); }
+.sysmon-bar i[data-level="none"] { background: var(--border-strong); }
 
 .sysmon-facts { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 2px 0 0; font-size: var(--fs-xs); }
 .sysmon-facts dt { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); margin: 0; }
 .sysmon-facts dd { margin: 0; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
 /* ─── Clock ─── */
-.clock {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 16px 18px 17px;
-  border-radius: var(--radius-lg);
-  background: var(--acrylic);
-  -webkit-backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
-  backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
-  border: 1px solid var(--system-glass-border);
-  box-shadow: var(--shadow-lg, 0 18px 40px rgba(0, 0, 0, 0.4)), var(--system-glass-highlight);
-  color: var(--text);
-  animation: pop-in var(--dur, 200ms) var(--ease, ease);
-}
-.clock-time { font-size: 34px; font-weight: 300; line-height: 1.05; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-.clock-date { font-size: var(--fs-sm); color: var(--text-2); margin-top: 3px; }
+.clock { gap: 2px; padding: 16px 18px 17px; }
+.clock-time { font-family: var(--font-display); font-size: 40px; font-weight: 250; line-height: 1.02; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.clock-date { font-size: var(--fs-sm); color: var(--text-2); margin-top: 4px; font-weight: var(--fw-medium); }
 
 /* ─── Network Status ─── */
-.netmon {
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 14px 16px 15px;
-  border-radius: var(--radius-lg);
-  background: var(--acrylic);
-  -webkit-backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
-  backdrop-filter: blur(var(--system-glass-blur)) saturate(var(--system-glass-saturate));
-  border: 1px solid var(--system-glass-border);
-  box-shadow: var(--shadow-lg, 0 18px 40px rgba(0, 0, 0, 0.4)), var(--system-glass-highlight);
-  color: var(--text);
-  animation: pop-in var(--dur, 200ms) var(--ease, ease);
-}
-.netmon-head { display: flex; align-items: center; justify-content: space-between; }
-.netmon-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--fs-sm); }
-.netmon-ico { display: inline-flex; color: var(--accent-color); }
-.netmon-ico svg { width: 14px; height: 14px; display: block; }
+.netmon { gap: 10px; }
 
 .netmon-state { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--text); }
-.netmon-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); transition: background var(--dur-fast, 120ms); }
-.netmon-dot[data-kind="online"] { background: #37d399; box-shadow: 0 0 7px rgba(55, 211, 153, 0.7); }
-.netmon-dot[data-kind="wait"] { background: #f5b942; }
-.netmon-dot[data-kind="offline"] { background: #ff5a67; box-shadow: 0 0 7px rgba(255, 90, 103, 0.5); }
-.netmon-dot[data-kind="transport"] { background: #f5b942; box-shadow: 0 0 7px rgba(245, 185, 66, 0.5); }
+.netmon-dot { width: 8px; height: 8px; }
+.netmon-dot[data-kind="online"] { background: var(--success); box-shadow: 0 0 7px color-mix(in srgb, var(--success) 70%, transparent); }
+.netmon-dot[data-kind="wait"] { background: var(--warning); }
+.netmon-dot[data-kind="offline"] { background: var(--danger); box-shadow: 0 0 7px color-mix(in srgb, var(--danger) 50%, transparent); }
+.netmon-dot[data-kind="transport"] { background: var(--warning); box-shadow: 0 0 7px color-mix(in srgb, var(--warning) 50%, transparent); }
 
 .netmon-metric { display: flex; align-items: baseline; justify-content: space-between; }
-.netmon-metric-label { font-size: var(--fs-xs); color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; }
-.netmon-value { font-size: var(--fs-md, 15px); font-weight: 600; font-variant-numeric: tabular-nums; }
+.netmon-value { font-size: var(--fs-md); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
 .netmon-note { font-size: var(--fs-xs); color: var(--text-3); }
+
+/* ─── Responsive: shorter / narrower screens ───
+   1280×720 and 1366×768 keep the full column; below ~740px of height the
+   cards tighten, and on narrow windows the column shrinks so it never covers
+   the icon grid. Widgets are never hidden (they carry live state). */
+@media (max-height: 760px) {
+  #widgets { gap: var(--space-2); padding: var(--space-4); }
+  .clock { padding: 12px 16px 13px; }
+  .clock-time { font-size: 34px; }
+  .sysmon { gap: 9px; padding: 12px 14px 13px; }
+  .netmon { gap: 8px; padding: 12px 14px 13px; }
+}
+@media (max-width: 900px) {
+  #widgets > .widget { width: 232px; }
+  .clock-time { font-size: 32px; }
+}

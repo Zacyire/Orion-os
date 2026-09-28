@@ -1,14 +1,24 @@
-#shell { position: fixed; inset: 0; opacity: 0; transition: opacity 900ms ease, transform 900ms var(--ease); transform: scale(1.02); }
+#shell { position: fixed; inset: 0; opacity: 0; transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transform: scale(1.015); }
 body:not(.booting) #shell { opacity: 1; transform: none; }
 
-/* Wallpaper stack: video (primary) → image → canvas fallback, plus a dim layer. */
-#wallpaper { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+/* Wallpaper stack: video (primary) → image → canvas fallback, plus one static
+   depth layer (dim + vignette + edge gradients) so the dock, widgets and icon
+   labels stay readable on any wallpaper. The layer is a single painted
+   pseudo-element: no animation, no blur, no per-frame cost. */
+#wallpaper { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(120% 90% at 50% 30%, var(--bg-2), var(--bg-1) 55%, var(--bg-0)); }
 #wallpaper > video, #wallpaper > img, #wallpaper > canvas {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
   opacity: 0; transition: opacity 1200ms ease;
 }
 #wallpaper > .wp-active { opacity: 1; }
-#wallpaper::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, var(--wallpaper-dim)); pointer-events: none; }
+#wallpaper::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 85% 75% at 50% 45%, transparent 55%, rgba(2, 4, 12, var(--wallpaper-vignette)) 100%),
+    linear-gradient(to top, rgba(2, 4, 12, calc(var(--wallpaper-vignette) * 0.7)), transparent 22%),
+    linear-gradient(to bottom, rgba(2, 4, 12, calc(var(--wallpaper-vignette) * 0.35)), transparent 16%),
+    rgba(0, 0, 0, var(--wallpaper-dim));
+}
 
 #workarea {
   position: absolute;
@@ -20,7 +30,7 @@ body.tb-left   #workarea { inset: 0 0 0 var(--tb-offset); }
 body.tb-right  #workarea { inset: 0 var(--tb-offset) 0 0; }
 body.tb-autohide #workarea { inset: 0; }
 
-#desktop { position: absolute; inset: 0; padding: 12px; }
+#desktop { position: absolute; inset: 0; padding: var(--space-3); z-index: var(--z-desktop); }
 #windows { position: absolute; inset: 0; pointer-events: none; }
 #windows > * { pointer-events: auto; }
 
@@ -29,20 +39,23 @@ body.tb-autohide #workarea { inset: 0; }
   position: absolute;
   width: calc(var(--icon-cell-w) - 8px);
   padding: 8px 4px 6px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
   border-radius: var(--radius);
   border: 1px solid transparent;
   text-align: center;
-  transition: left var(--dur) var(--ease), top var(--dur) var(--ease), background var(--dur-fast);
+  transition: left var(--dur) var(--ease), top var(--dur) var(--ease), background var(--dur-fast), border-color var(--dur-fast);
   touch-action: none;
 }
-.desk-icon:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.08); }
-.desk-icon.selected { background: var(--accent-color-soft); border-color: color-mix(in srgb, var(--accent-color) 50%, transparent); }
+.desk-icon .app-icon { width: 48px; height: 48px; transition: transform var(--dur) var(--ease-spring), box-shadow var(--dur); }
+.desk-icon:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.07); }
+.desk-icon:hover .app-icon { transform: translateY(-2px); }
+.desk-icon:active .app-icon { transform: scale(0.95); }
+.desk-icon.selected { background: var(--accent-color-soft); border-color: var(--border-accent); }
+.desk-icon:focus-visible { outline: var(--focus-outline); outline-offset: 1px; border-radius: var(--radius); }
 .desk-icon.dragging { opacity: 0.35; }
-.desk-icon .app-icon { width: 48px; height: 48px; }
 .desk-icon span {
-  font-size: var(--fs-sm); color: #fff; line-height: 1.25;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.5);
+  font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-on-wallpaper); line-height: 1.25;
+  text-shadow: var(--text-shadow-wallpaper);
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
 .desk-grid-ghost {
@@ -55,13 +68,15 @@ body.tb-autohide #workarea { inset: 0; }
 #desktop.drop-target { outline: 2px dashed color-mix(in srgb, var(--accent-color) 50%, transparent); outline-offset: -8px; border-radius: var(--radius-lg); }
 .select-box { position: absolute; border: 1px solid var(--accent-color); background: var(--accent-color-soft); pointer-events: none; }
 
-/* ─── App icon tile ─── */
+/* ─── App icon tile ───
+   One tile shape everywhere (desktop, dock, launcher, store, title bars):
+   a rounded square (~26% radius) with a top highlight and a soft shadow. */
 .app-icon {
   --tile-a: #7c5cff; --tile-b: #00d4ff;
   width: 40px; height: 40px; border-radius: 26%;
-  display: grid; place-items: center;
+  display: grid; place-items: center; position: relative;
   background: linear-gradient(135deg, var(--tile-a), var(--tile-b));
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--tile-a) 35%, transparent), inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.15);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--tile-a) 32%, transparent), 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.15);
   color: #fff; flex: none;
 }
 .app-icon svg { width: 58%; height: 58%; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
@@ -70,22 +85,24 @@ body.tb-autohide #workarea { inset: 0; }
 .app-icon.lg { width: 64px; height: 64px; }
 .app-icon.xl { width: 96px; height: 96px; }
 
-#drag-layer { position: fixed; inset: 0; pointer-events: none; z-index: 9500; }
+#drag-layer { position: fixed; inset: 0; pointer-events: none; z-index: var(--z-drag); }
 .drag-ghost { position: absolute; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translate(-50%, -50%) scale(1.05); filter: drop-shadow(0 10px 18px rgba(0,0,0,.5)); transition: transform var(--dur-fast); }
 .drag-ghost .app-icon { width: 48px; height: 48px; }
 .drag-ghost span { font-size: var(--fs-xs); padding: 2px 8px; border-radius: 10px; background: var(--accent-color); color: var(--accent-color-contrast); white-space: nowrap; }
 
-#power-screen { position: fixed; inset: 0; z-index: 11000; background: #06070b; display: grid; place-content: center; justify-items: center; gap: 24px; color: #ddd; animation: pop-in 500ms ease; }
+#power-screen { position: fixed; inset: 0; z-index: var(--z-power); background: var(--bg-0); display: grid; place-content: center; justify-items: center; gap: 24px; color: #ddd; animation: pop-in 500ms ease; }
 .power-spinner { width: 42px; height: 42px; border-radius: 50%; border: 3px solid #222; border-top-color: var(--accent-color); animation: spin 0.9s linear infinite; }
 
-/* Lock screen */
+/* Lock screen (local screen lock — presentation only; not authentication).
+   Shares the display type and depth language that Phase 2 builds on. */
 #lock-screen {
-  position: fixed; inset: 0; z-index: 10500; display: flex; flex-direction: column; align-items: center; padding-top: 14vh;
-  background: rgba(5, 6, 12, 0.35); backdrop-filter: blur(30px) saturate(140%); -webkit-backdrop-filter: blur(30px) saturate(140%);
-  color: #fff; outline: none; animation: pop-in 400ms var(--ease); transition: opacity 500ms, transform 500ms var(--ease);
+  position: fixed; inset: 0; z-index: var(--z-lock); display: flex; flex-direction: column; align-items: center; padding-top: 14vh;
+  background: radial-gradient(ellipse at 50% 30%, rgba(8, 12, 26, 0.25), rgba(2, 4, 10, 0.6));
+  backdrop-filter: blur(30px) saturate(140%); -webkit-backdrop-filter: blur(30px) saturate(140%);
+  color: var(--text-on-wallpaper); outline: none; animation: fade-in var(--dur-slower) var(--ease-out); transition: opacity 500ms, transform 500ms var(--ease);
 }
 #lock-screen.unlocking { opacity: 0; transform: translateY(-40px); }
-.lock-time { font-size: clamp(64px, 12vw, 128px); font-weight: 200; letter-spacing: -3px; line-height: 1; }
+.lock-time { font-family: var(--font-display); font-size: clamp(64px, 12vw, 128px); font-weight: 200; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.35); }
 .lock-date { font-size: 22px; margin-top: 8px; opacity: 0.85; }
 .lock-user { margin-top: auto; margin-bottom: 14vh; display: grid; justify-items: center; gap: 8px; }
 .lock-user .avatar { width: 110px; height: 110px; font-size: 40px; box-shadow: 0 0 0 4px rgba(255,255,255,.2), var(--shadow-lg); }
@@ -100,10 +117,12 @@ body.tb-autohide #workarea { inset: 0; }
 .avatar {
   width: 34px; height: 34px; border-radius: 50%; flex: none;
   display: grid; place-items: center; font-weight: 600; font-size: 14px; color: #fff;
-  background: linear-gradient(135deg, var(--accent-color), var(--accent-color-2));
+  background: var(--accent-gradient);
 }
 
 /* Full-tile app artwork (first-party apps) */
-.app-icon.art { background: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); overflow: hidden; }
+.app-icon.art { background: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3); overflow: hidden; }
+/* Shared top highlight on artwork tiles, so art and gradient tiles match. */
+.app-icon.art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06); pointer-events: none; }
 .app-icon.art svg { width: 100%; height: 100%; filter: none; }
 .app-icon.art img { width: 100%; height: 100%; object-fit: cover; display: block; }

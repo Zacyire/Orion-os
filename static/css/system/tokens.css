@@ -1,82 +1,167 @@
 /* ==========================================================================
-   Orion OS — Design tokens
-   Every visual value in the OS resolves to one of these custom properties.
-   Change them here (or at runtime via Settings, which writes --accent-color
-   and --system-glass-opacity on :root) to re-theme the entire system.
+   Orion OS — Design tokens ("Orion night sky")
+   Every visual value in the shell resolves to one of these custom properties.
+   Change them here (or at runtime via Settings, which writes --accent-color,
+   --accent-color-2, --accent-color-contrast and --system-glass-opacity on
+   :root) to re-theme the entire system.
+
+   Layering model (Phase 0 design §10):
+     1. wallpaper   — full-bleed, with a static vignette for depth/contrast
+     2. float glass — dock, flyouts, menus, widgets, toasts (blurred, tinted)
+     3. windows     — near-solid "mica" so app content stays readable
+   Glass is used selectively: never stacked blur-on-blur on large areas.
    ========================================================================== */
 
 :root {
-  /* ─── Accent ─── */
+  /* ─── Accent (runtime-overridable) ─── */
   --accent-color: #4c8dff;
   --accent-color-2: #7c5cff;                 /* derived at runtime (hue shift) */
   --accent-color-soft: color-mix(in srgb, var(--accent-color) 22%, transparent);
+  --accent-color-faint: color-mix(in srgb, var(--accent-color) 12%, transparent);
   --accent-color-strong: color-mix(in srgb, var(--accent-color) 78%, white);
   --accent-color-contrast: #ffffff;
+  --accent-gradient: linear-gradient(135deg, var(--accent-color), var(--accent-color-2));
+  --accent-glow: 0 0 18px color-mix(in srgb, var(--accent-color) 45%, transparent);
 
-  /* ─── System glass (Acrylic / Mica) ─── */
-  --system-glass-rgb: 30, 32, 42;            /* tint of translucent surfaces */
+  /* ─── Background layers (deep space navy with a violet undertone) ─── */
+  --bg-0: #04060c;                           /* page / behind everything */
+  --bg-1: #080b15;                           /* wallpaper fallback base */
+  --bg-2: #0e1322;                           /* raised solid areas */
+  --bg: var(--bg-0);
+
+  /* ─── System glass (runtime-overridable opacity) ─── */
+  --system-glass-rgb: 20, 24, 38;            /* tint of translucent surfaces */
   --system-glass-opacity: 0.62;              /* 0 = clear, 1 = solid */
-  --system-glass-blur: 20px;
-  --system-glass-blur-strong: 40px;
-  --system-glass-saturate: 160%;
-  --system-glass-border: rgba(255, 255, 255, 0.09);
+  --system-glass-blur: 22px;
+  --system-glass-blur-strong: 36px;
+  --system-glass-saturate: 170%;
+  --system-glass-border: rgba(255, 255, 255, 0.085);
   --system-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  /* Float glass: dock, flyouts, menus, widgets, toasts. */
   --acrylic: rgba(var(--system-glass-rgb), var(--system-glass-opacity));
-  --mica: rgba(var(--system-glass-rgb), min(1, calc(var(--system-glass-opacity) + 0.18)));
+  --glass-float: var(--acrylic);
+  /* Window glass: nearly solid, for readability of app content. */
+  --mica: rgba(var(--system-glass-rgb), min(0.97, calc(var(--system-glass-opacity) + 0.35)));
+  --glass-window: var(--mica);
+  /* Small blur for windows/secondary surfaces (cheaper than the float blur). */
+  --blur-sm: 12px;
+  --blur: var(--system-glass-blur);
+  --blur-lg: var(--system-glass-blur-strong);
 
-  /* ─── Surfaces ─── */
-  --bg: #07080d;
+  /* ─── Surfaces (translucent fills on top of glass) ─── */
   --surface-solid: rgb(var(--system-glass-rgb));
+  --surface-1: rgba(255, 255, 255, 0.03);
   --surface-2: rgba(255, 255, 255, 0.045);
   --surface-3: rgba(255, 255, 255, 0.085);
   --surface-hover: rgba(255, 255, 255, 0.075);
   --surface-active: rgba(255, 255, 255, 0.04);
-  --scrim: rgba(0, 0, 0, 0.5);
+  --surface-selected: var(--accent-color-soft);
+  --scrim: rgba(2, 4, 10, 0.55);
 
-  /* ─── Text ─── */
-  --text: #eef0f5;
-  --text-2: #b1b6c4;
-  --text-3: #7a8093;
+  /* ─── Text hierarchy ─── */
+  --text: #eef1f8;                           /* primary */
+  --text-2: #b3b9c9;                         /* secondary */
+  --text-3: #7c8398;                         /* muted / tertiary */
+  --text-on-accent: var(--accent-color-contrast);
+  --text-on-wallpaper: #ffffff;
+  --text-shadow-wallpaper: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 10px rgba(0, 0, 0, 0.45);
+
+  /* ─── Status ─── */
   --danger: #ff5a67;
   --success: #37d399;
   --warning: #f5b942;
+  --info: var(--accent-color);
 
-  /* ─── Borders & elevation ─── */
+  /* ─── Borders ─── */
   --border: var(--system-glass-border);
   --border-strong: rgba(255, 255, 255, 0.16);
+  --border-accent: color-mix(in srgb, var(--accent-color) 45%, transparent);
   --highlight: var(--system-glass-highlight);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
-  --shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.35);
-  --focus-ring: 0 0 0 2px var(--accent-color);
+
+  /* ─── Elevation (e1 → e4) ─── */
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --elev-2: 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.22);
+  --elev-3: 0 16px 44px rgba(0, 0, 0, 0.42), 0 4px 12px rgba(0, 0, 0, 0.26);
+  --elev-4: 0 28px 80px rgba(0, 0, 0, 0.55), 0 8px 22px rgba(0, 0, 0, 0.32);
+  --shadow-sm: var(--elev-1);
+  --shadow: var(--elev-3);
+  --shadow-lg: var(--elev-4);
+
+  /* ─── Focus ─── */
+  --focus-color: var(--accent-color-strong);
+  --focus-ring: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--focus-color);
+  --focus-outline: 2px solid var(--focus-color);
+  --focus-offset: 2px;
 
   /* ─── Geometry ─── */
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
-  --tb-size: 52px;
-  --tb-gap: 8px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+  --tb-size: 54px;
+  --tb-gap: 10px;
   --tb-offset: calc(var(--tb-size) + var(--tb-gap) * 2);
   --titlebar-h: 40px;
   --icon-cell-w: 92px;
   --icon-cell-h: 96px;
 
+  /* ─── Spacing (4px grid) ─── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
   /* ─── Type ─── */
-  --font: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Inter", Roboto, sans-serif;
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", "SF Pro Text", system-ui, -apple-system, "Inter", "Ubuntu", Roboto, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", "SF Pro Display", system-ui, -apple-system, "Inter", "Ubuntu", Roboto, sans-serif;
   --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas, monospace;
+  --fs-2xs: 10px;
   --fs-xs: 11px;
   --fs-sm: 12.5px;
   --fs: 14px;
+  --fs-md: 15px;
   --fs-lg: 17px;
   --fs-xl: 24px;
+  --fs-2xl: 32px;
+  --fs-display: 56px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --lh: 1.45;
+  --lh-tight: 1.15;
+  --tracking-caps: 0.07em;
 
   /* ─── Motion ─── */
-  --ease: cubic-bezier(0.2, 0.9, 0.25, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease: cubic-bezier(0.2, 0.9, 0.25, 1);          /* standard ease-out */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);        /* soft deceleration */
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* small overshoot */
+  --dur-instant: 80ms;
   --dur-fast: 120ms;
-  --dur: 220ms;
-  --dur-slow: 420ms;
+  --dur: 200ms;
+  --dur-slow: 280ms;
+  --dur-slower: 420ms;
+
+  /* ─── Layering (z-index) ─── */
+  --z-desktop: 1;
+  --z-widgets: 5;
+  --z-snap: 4000;
+  --z-taskbar: 5000;
+  --z-flyout: 5500;
+  --z-preview: 6000;
+  --z-toast: 8000;
+  --z-menu: 9000;
+  --z-drag: 9500;
+  --z-boot: 10000;
+  --z-lock: 10500;
+  --z-power: 11000;
 
   /* ─── Boot console ─── */
   --boot-bg: #000;
@@ -86,29 +171,38 @@
   --boot-fail: #ff5a67;
   --boot-accent: #1793d1;
 
-  /* ─── Wallpaper ─── */
-  --wallpaper-dim: 0.12;                     /* darken video for legibility */
+  /* ─── Wallpaper presentation ─── */
+  --wallpaper-dim: 0.14;                     /* darken video for legibility */
+  --wallpaper-vignette: 0.55;                /* edge darkening strength */
 
   color-scheme: dark;
 }
 
 /* Light mode */
 :root[data-theme="light"] {
-  --system-glass-rgb: 246, 247, 251;
-  --system-glass-border: rgba(0, 0, 0, 0.09);
-  --system-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  --bg: #e9edf5;
-  --surface-2: rgba(0, 0, 0, 0.04);
-  --surface-3: rgba(0, 0, 0, 0.07);
-  --surface-hover: rgba(0, 0, 0, 0.06);
-  --surface-active: rgba(0, 0, 0, 0.03);
-  --text: #14161d;
-  --text-2: #444a5c;
-  --text-3: #6f7488;
-  --border-strong: rgba(0, 0, 0, 0.16);
-  --shadow: 0 12px 40px rgba(20, 20, 40, 0.18), 0 2px 8px rgba(20, 20, 40, 0.12);
-  --shadow-lg: 0 24px 80px rgba(20, 20, 40, 0.25), 0 4px 16px rgba(20, 20, 40, 0.14);
+  --bg-0: #e6eaf3;
+  --bg-1: #dde3ef;
+  --bg-2: #f3f5fa;
+  --system-glass-rgb: 246, 247, 252;
+  --system-glass-border: rgba(20, 26, 48, 0.1);
+  --system-glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --surface-1: rgba(10, 16, 40, 0.025);
+  --surface-2: rgba(10, 16, 40, 0.04);
+  --surface-3: rgba(10, 16, 40, 0.07);
+  --surface-hover: rgba(10, 16, 40, 0.06);
+  --surface-active: rgba(10, 16, 40, 0.03);
+  --scrim: rgba(20, 26, 48, 0.3);
+  --text: #121521;
+  --text-2: #434a5e;
+  --text-3: #686f86;
+  --border-strong: rgba(20, 26, 48, 0.18);
+  --accent-color-strong: color-mix(in srgb, var(--accent-color) 80%, black);
+  --elev-1: 0 1px 2px rgba(20, 26, 60, 0.1), 0 2px 8px rgba(20, 26, 60, 0.07);
+  --elev-2: 0 8px 24px rgba(20, 26, 60, 0.12), 0 2px 6px rgba(20, 26, 60, 0.08);
+  --elev-3: 0 16px 44px rgba(20, 26, 60, 0.16), 0 4px 12px rgba(20, 26, 60, 0.1);
+  --elev-4: 0 28px 80px rgba(20, 26, 60, 0.22), 0 8px 22px rgba(20, 26, 60, 0.12);
   --wallpaper-dim: 0;
+  --wallpaper-vignette: 0.25;
   color-scheme: light;
 }
 
@@ -117,4 +211,15 @@
   --system-glass-opacity: 1;
   --system-glass-blur: 0px;
   --system-glass-blur-strong: 0px;
+  --blur-sm: 0px;
+}
+
+/* Honour an OS-level "reduce transparency" preference the same way. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --system-glass-opacity: 1;
+    --system-glass-blur: 0px;
+    --system-glass-blur-strong: 0px;
+    --blur-sm: 0px;
+  }
 }
